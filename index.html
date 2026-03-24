@@ -290,10 +290,21 @@ uploadZone.addEventListener('drop', e => { e.preventDefault(); uploadZone.classL
 function loadImage(file) {
   const reader = new FileReader();
   reader.onload = e => {
-    uploadedBase64 = e.target.result.split(',')[1];
-    previewImg.src = e.target.result;
-    previewImg.style.display = 'block';
-    uploadZone.classList.remove('active');
+    const img = new Image();
+    img.onload = () => {
+      // Compress: max 1280px, JPEG 70%
+      const MAX = 1280;
+      let w = img.width, h = img.height;
+      if (w > MAX || h > MAX) { const r = Math.min(MAX/w, MAX/h); w = Math.round(w*r); h = Math.round(h*r); }
+      const c = document.createElement('canvas'); c.width = w; c.height = h;
+      c.getContext('2d').drawImage(img, 0, 0, w, h);
+      const compressed = c.toDataURL('image/jpeg', 0.7);
+      uploadedBase64 = compressed.split(',')[1];
+      previewImg.src = compressed;
+      previewImg.style.display = 'block';
+      uploadZone.classList.remove('active');
+    };
+    img.src = e.target.result;
   };
   reader.readAsDataURL(file);
 }
