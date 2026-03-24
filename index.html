@@ -1,0 +1,852 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ambient Sense</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600&family=JetBrains+Mono:wght@300;400&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg: #0a0a0b;
+  --surface: rgba(255,255,255,0.03);
+  --surface2: rgba(255,255,255,0.06);
+  --border: rgba(255,255,255,0.06);
+  --text: rgba(255,255,255,0.85);
+  --text2: rgba(255,255,255,0.45);
+  --text3: rgba(255,255,255,0.25);
+  --accent: #4ade80;
+  --accent2: #22d3ee;
+  --warm: #fb923c;
+  --mono: 'JetBrains Mono', monospace;
+  --sans: 'DM Sans', -apple-system, sans-serif;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* ── Layout ── */
+.app {
+  display: grid;
+  grid-template-columns: 1fr 420px;
+  height: 100vh;
+  gap: 0;
+}
+
+/* ── Camera Panel ── */
+.camera-panel {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #000;
+  overflow: hidden;
+}
+
+.camera-panel video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scaleX(-1);
+}
+
+.camera-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* Scan line animation */
+.scan-line {
+  position: absolute;
+  left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  opacity: 0;
+  animation: scan 4s ease-in-out infinite;
+}
+@keyframes scan {
+  0% { top: 0; opacity: 0; }
+  10% { opacity: 0.4; }
+  90% { opacity: 0.4; }
+  100% { top: 100%; opacity: 0; }
+}
+
+/* Corner markers */
+.corner { position: absolute; width: 24px; height: 24px; }
+.corner::before, .corner::after {
+  content: ''; position: absolute;
+  background: var(--accent); opacity: 0.4;
+}
+.corner-tl { top: 20px; left: 20px; }
+.corner-tl::before { top: 0; left: 0; width: 24px; height: 1.5px; }
+.corner-tl::after { top: 0; left: 0; width: 1.5px; height: 24px; }
+.corner-tr { top: 20px; right: 20px; }
+.corner-tr::before { top: 0; right: 0; width: 24px; height: 1.5px; }
+.corner-tr::after { top: 0; right: 0; width: 1.5px; height: 24px; }
+.corner-bl { bottom: 20px; left: 20px; }
+.corner-bl::before { bottom: 0; left: 0; width: 24px; height: 1.5px; }
+.corner-bl::after { bottom: 0; left: 0; width: 1.5px; height: 24px; }
+.corner-br { bottom: 20px; right: 20px; }
+.corner-br::before { bottom: 0; right: 0; width: 24px; height: 1.5px; }
+.corner-br::after { bottom: 0; right: 0; width: 1.5px; height: 24px; }
+
+/* Status badge on camera */
+.camera-status {
+  position: absolute;
+  top: 20px; left: 50%;
+  transform: translateX(-50%);
+  display: flex; align-items: center; gap: 6px;
+  padding: 6px 14px;
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  font-size: 11px;
+  font-family: var(--mono);
+  color: var(--text2);
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+.camera-status .dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: blink 2s ease-in-out infinite;
+}
+.camera-status.analyzing .dot {
+  background: var(--warm);
+  animation: blink 0.5s ease-in-out infinite;
+}
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+/* Detection boxes overlay */
+.detection-box {
+  position: absolute;
+  border: 1.5px solid var(--accent);
+  border-radius: 6px;
+  opacity: 0.6;
+  transition: all 0.5s ease;
+}
+.detection-box .det-label {
+  position: absolute;
+  top: -22px; left: -1px;
+  font-size: 10px;
+  font-family: var(--mono);
+  color: var(--bg);
+  background: var(--accent);
+  padding: 2px 8px;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+.detection-box.device {
+  border-color: var(--accent2);
+}
+.detection-box.device .det-label {
+  background: var(--accent2);
+}
+
+/* ── Analysis Panel ── */
+.analysis-panel {
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid var(--border);
+  background: var(--bg);
+  overflow: hidden;
+}
+
+.panel-header {
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.panel-header h1 {
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: -0.3px;
+  margin-bottom: 4px;
+}
+.panel-header .subtitle {
+  font-size: 11px;
+  color: var(--text3);
+  font-family: var(--mono);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+/* Config section */
+.config-section {
+  padding: 14px 24px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.config-section label {
+  font-size: 10px;
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-family: var(--mono);
+  flex-shrink: 0;
+}
+.config-section input {
+  flex: 1;
+  min-width: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  padding: 7px 10px;
+  font-size: 12px;
+  font-family: var(--mono);
+  outline: none;
+}
+.config-section input:focus {
+  border-color: rgba(255,255,255,0.15);
+}
+.config-section input::placeholder {
+  color: var(--text3);
+}
+.config-row {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  align-items: center;
+}
+
+/* Scroll area */
+.analysis-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0;
+}
+.analysis-scroll::-webkit-scrollbar { width: 3px; }
+.analysis-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 3px; }
+
+/* Section */
+.section {
+  padding: 18px 24px;
+  border-bottom: 1px solid var(--border);
+}
+.section-title {
+  font-size: 9px;
+  font-family: var(--mono);
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  margin-bottom: 12px;
+}
+
+/* Recommendation card */
+.recommendation {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px;
+  margin-bottom: 10px;
+  transition: all 0.3s;
+}
+.recommendation.primary {
+  border-color: rgba(74,222,128,0.2);
+  background: rgba(74,222,128,0.04);
+}
+.rec-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.rec-icon {
+  font-size: 22px;
+  line-height: 1;
+}
+.rec-title {
+  font-size: 14px;
+  font-weight: 500;
+}
+.rec-confidence {
+  margin-left: auto;
+  font-size: 10px;
+  font-family: var(--mono);
+  color: var(--accent);
+  background: rgba(74,222,128,0.1);
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+.rec-body {
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text2);
+}
+
+/* Detected items */
+.detected-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.detected-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 12px;
+}
+.detected-item .di-icon { font-size: 18px; }
+.detected-item .di-name { flex: 1; }
+.detected-item .di-type {
+  font-size: 10px;
+  font-family: var(--mono);
+  color: var(--text3);
+  text-transform: uppercase;
+}
+
+/* Context tags */
+.context-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.ctx-tag {
+  font-size: 11px;
+  padding: 4px 10px;
+  border-radius: 14px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text2);
+}
+
+/* History */
+.history-item {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+}
+.history-item:last-child { border-bottom: none; }
+.history-time {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text3);
+  margin-bottom: 3px;
+}
+.history-text {
+  color: var(--text2);
+  line-height: 1.5;
+}
+
+/* Controls */
+.controls {
+  padding: 16px 24px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  gap: 8px;
+}
+.btn {
+  flex: 1;
+  padding: 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-family: var(--sans);
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  transition: all 0.2s;
+}
+.btn:hover {
+  background: var(--surface2);
+  border-color: rgba(255,255,255,0.12);
+}
+.btn.primary {
+  background: rgba(74,222,128,0.1);
+  border-color: rgba(74,222,128,0.2);
+  color: var(--accent);
+}
+.btn.primary:hover {
+  background: rgba(74,222,128,0.18);
+}
+.btn.danger {
+  color: #f87171;
+  border-color: rgba(248,113,113,0.15);
+}
+.btn.danger:hover {
+  background: rgba(248,113,113,0.08);
+}
+
+/* Interval selector */
+.interval-select {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  padding: 7px 10px;
+  font-size: 12px;
+  font-family: var(--mono);
+  outline: none;
+  cursor: pointer;
+}
+
+/* Empty state */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 24px;
+  text-align: center;
+}
+.empty-state .es-icon { font-size: 32px; margin-bottom: 12px; opacity: 0.3; }
+.empty-state .es-text { font-size: 12px; color: var(--text3); line-height: 1.6; }
+
+/* Raw output */
+.raw-output {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text2);
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+  .app {
+    grid-template-columns: 1fr;
+    grid-template-rows: 40vh 1fr;
+  }
+  .analysis-panel { border-left: none; border-top: 1px solid var(--border); }
+}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <!-- Camera -->
+  <div class="camera-panel">
+    <video id="video" autoplay playsinline muted></video>
+    <canvas id="captureCanvas" style="display:none"></canvas>
+
+    <div class="camera-overlay">
+      <div class="scan-line"></div>
+      <div class="corner corner-tl"></div>
+      <div class="corner corner-tr"></div>
+      <div class="corner corner-bl"></div>
+      <div class="corner corner-br"></div>
+      <div id="detectionBoxes"></div>
+    </div>
+
+    <div class="camera-status" id="cameraStatus">
+      <div class="dot"></div>
+      <span id="statusText">WAITING</span>
+    </div>
+  </div>
+
+  <!-- Analysis -->
+  <div class="analysis-panel">
+    <div class="panel-header">
+      <h1>Ambient Sense</h1>
+      <div class="subtitle">Environmental Intelligence</div>
+    </div>
+
+    <div class="config-section">
+      <div class="config-row">
+        <label>Provider</label>
+        <select class="interval-select" id="providerSelect">
+          <option value="openai">OpenAI</option>
+          <option value="anthropic">Anthropic</option>
+        </select>
+      </div>
+      <div class="config-row">
+        <label>Base URL</label>
+        <input type="text" id="baseUrl" placeholder="https://api.openai.com/v1" />
+      </div>
+      <div class="config-row">
+        <label>API Key</label>
+        <input type="password" id="apiKey" placeholder="sk-..." />
+      </div>
+      <div class="config-row">
+        <label>Model</label>
+        <input type="text" id="modelName" placeholder="gpt-4o" />
+      </div>
+      <div class="config-row">
+        <label>Interval</label>
+        <select class="interval-select" id="intervalSelect">
+          <option value="3000">3s</option>
+          <option value="5000" selected>5s</option>
+          <option value="10000">10s</option>
+          <option value="15000">15s</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="analysis-scroll" id="analysisScroll">
+      <!-- Recommendation -->
+      <div class="section" id="recSection" style="display:none">
+        <div class="section-title">Recommended Interaction</div>
+        <div id="recommendations"></div>
+      </div>
+
+      <!-- Detected -->
+      <div class="section" id="detectedSection" style="display:none">
+        <div class="section-title">Detected</div>
+        <div class="detected-list" id="detectedList"></div>
+      </div>
+
+      <!-- Context -->
+      <div class="section" id="contextSection" style="display:none">
+        <div class="section-title">Scene Context</div>
+        <div class="context-tags" id="contextTags"></div>
+      </div>
+
+      <!-- Raw -->
+      <div class="section" id="rawSection" style="display:none">
+        <div class="section-title">Raw Analysis</div>
+        <div class="raw-output" id="rawOutput"></div>
+      </div>
+
+      <!-- History -->
+      <div class="section" id="historySection" style="display:none">
+        <div class="section-title">History</div>
+        <div id="historyList"></div>
+      </div>
+
+      <!-- Empty -->
+      <div class="empty-state" id="emptyState">
+        <div class="es-icon">👁</div>
+        <div class="es-text">
+          Enter your OpenAI API key and press Start<br>
+          to begin ambient environment analysis
+        </div>
+      </div>
+    </div>
+
+    <div class="controls">
+      <button class="btn primary" id="startBtn" onclick="toggleAnalysis()">Start</button>
+      <button class="btn" onclick="analyzeOnce()">Analyze Once</button>
+    </div>
+  </div>
+</div>
+
+<script src="agentic-core.umd.js"></script>
+<script>
+const SYSTEM_PROMPT = `You are an ambient environment analyzer. You see through a camera and analyze the scene to recommend the best way for an AI to interact with the humans present.
+
+Your core belief: AI is everywhere — devices are just its body parts. You decide which "limb" to use based on the situation.
+
+Respond in this exact JSON format:
+{
+  "people": [
+    { "description": "brief description", "activity": "what they're doing", "attention": "focused/distracted/idle" }
+  ],
+  "devices": [
+    { "type": "laptop|phone|tablet|tv|speaker|watch|monitor|other", "description": "brief description", "screen_state": "on/off/unknown" }
+  ],
+  "scene": {
+    "setting": "office/home/kitchen/outdoors/etc",
+    "lighting": "bright/dim/dark",
+    "noise_level": "quiet/moderate/noisy (estimated)",
+    "activity_type": "working/chatting/cooking/relaxing/presenting/walking/eating/etc"
+  },
+  "recommendation": {
+    "primary_channel": "voice|screen|notification|vibration|ambient_light|none",
+    "target_device": "which device to use, or 'none'",
+    "modality": "text|voice|visual|haptic|ambient",
+    "urgency": "can_wait|gentle|immediate",
+    "reason": "1-2 sentence explanation of why this channel is best right now",
+    "example": "Example of how the AI would respond in this mode"
+  },
+  "alternative": {
+    "channel": "backup option",
+    "reason": "when to use this instead"
+  },
+  "context_tags": ["tag1", "tag2", "tag3"]
+}
+
+Be specific and practical. Consider:
+- If hands are busy → voice
+- If in a meeting → silent notification
+- If alone at desk → screen popup
+- If multiple people → shared screen (TV/monitor)
+- If walking → voice or watch vibration
+- If cooking → voice, keep it brief
+- If presenting → absolutely do not interrupt visually
+
+Always respond with valid JSON only, no markdown wrapping.`;
+
+let video, canvas, ctx;
+let analysisInterval = null;
+let isRunning = false;
+let history = [];
+
+// Init camera
+async function initCamera() {
+  video = document.getElementById('video');
+  canvas = document.getElementById('captureCanvas');
+  ctx = canvas.getContext('2d');
+
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } }
+    });
+    video.srcObject = stream;
+    setStatus('LIVE', false);
+  } catch (e) {
+    setStatus('NO CAMERA', false);
+    console.error('Camera error:', e);
+  }
+}
+
+function setStatus(text, analyzing) {
+  document.getElementById('statusText').textContent = text;
+  document.getElementById('cameraStatus').classList.toggle('analyzing', analyzing);
+}
+
+function captureFrame() {
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  ctx.drawImage(video, 0, 0);
+  return canvas.toDataURL('image/jpeg', 0.7);
+}
+
+async function analyze() {
+  const apiKey = document.getElementById('apiKey').value.trim();
+  const baseUrl = document.getElementById('baseUrl').value.trim() || undefined;
+  const model = document.getElementById('modelName').value.trim() || undefined;
+  const provider = document.getElementById('providerSelect').value;
+  if (!apiKey) { alert('Enter API key'); return; }
+
+  setStatus('ANALYZING', true);
+
+  const frameData = captureFrame();
+  const base64 = frameData.split(',')[1];
+
+  try {
+    const result = await AgenticCore.agenticAsk(
+      'Analyze this scene. What devices and people do you see? What is the best way for an AI assistant to interact right now?',
+      {
+        provider,
+        apiKey,
+        baseUrl,
+        model,
+        tools: [],       // no tools, just vision analysis
+        stream: false,    // we want full JSON response
+        system: SYSTEM_PROMPT,
+        images: [{ data: base64, media_type: 'image/jpeg' }]
+      },
+      (type, data) => {
+        // emit callback — just log
+        if (type === 'status') console.log('[ambient]', data.message);
+      }
+    );
+
+    const content = typeof result === 'string' ? result : result.answer || result;
+    let parsed;
+    try {
+      const cleaned = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+      parsed = JSON.parse(cleaned);
+    } catch {
+      parsed = null;
+    }
+
+    if (parsed) {
+      renderAnalysis(parsed);
+      history.unshift({ time: new Date(), data: parsed });
+      if (history.length > 20) history.pop();
+      renderHistory();
+    } else {
+      document.getElementById('rawOutput').textContent = content;
+      document.getElementById('rawSection').style.display = 'block';
+    }
+
+    setStatus(isRunning ? 'SCANNING' : 'LIVE', false);
+  } catch (e) {
+    setStatus('ERROR', false);
+    console.error(e);
+    document.getElementById('rawOutput').textContent = 'Error: ' + e.message;
+    document.getElementById('rawSection').style.display = 'block';
+  }
+}
+
+function renderAnalysis(data) {
+  document.getElementById('emptyState').style.display = 'none';
+
+  // Recommendations
+  const rec = data.recommendation;
+  const alt = data.alternative;
+  const recHTML = `
+    <div class="recommendation primary">
+      <div class="rec-header">
+        <div class="rec-icon">${getChannelIcon(rec.primary_channel)}</div>
+        <div class="rec-title">${capitalize(rec.primary_channel)} → ${rec.target_device || 'ambient'}</div>
+        <div class="rec-confidence">${rec.urgency}</div>
+      </div>
+      <div class="rec-body">
+        ${rec.reason}<br><br>
+        <em>"${rec.example}"</em>
+      </div>
+    </div>
+    ${alt ? `
+    <div class="recommendation">
+      <div class="rec-header">
+        <div class="rec-icon">${getChannelIcon(alt.channel)}</div>
+        <div class="rec-title">Alt: ${capitalize(alt.channel)}</div>
+      </div>
+      <div class="rec-body">${alt.reason}</div>
+    </div>` : ''}
+  `;
+  document.getElementById('recommendations').innerHTML = recHTML;
+  document.getElementById('recSection').style.display = 'block';
+
+  // Detected items
+  const items = [
+    ...(data.people || []).map(p => ({
+      icon: '👤', name: p.description,
+      type: `${p.activity} · ${p.attention}`
+    })),
+    ...(data.devices || []).map(d => ({
+      icon: getDeviceIcon(d.type), name: d.description,
+      type: `${d.type} · ${d.screen_state}`
+    }))
+  ];
+  document.getElementById('detectedList').innerHTML = items.map(i => `
+    <div class="detected-item">
+      <div class="di-icon">${i.icon}</div>
+      <div class="di-name">${i.name}</div>
+      <div class="di-type">${i.type}</div>
+    </div>
+  `).join('');
+  document.getElementById('detectedSection').style.display = 'block';
+
+  // Context tags
+  const scene = data.scene || {};
+  const tags = [
+    scene.setting, scene.lighting, scene.noise_level, scene.activity_type,
+    ...(data.context_tags || [])
+  ].filter(Boolean);
+  document.getElementById('contextTags').innerHTML = tags.map(t =>
+    `<div class="ctx-tag">${t}</div>`
+  ).join('');
+  document.getElementById('contextSection').style.display = 'block';
+
+  // Raw
+  document.getElementById('rawOutput').textContent = JSON.stringify(data, null, 2);
+  document.getElementById('rawSection').style.display = 'block';
+}
+
+function renderHistory() {
+  if (history.length === 0) return;
+  document.getElementById('historySection').style.display = 'block';
+  document.getElementById('historyList').innerHTML = history.slice(0, 10).map(h => {
+    const r = h.data.recommendation;
+    return `
+      <div class="history-item">
+        <div class="history-time">${h.time.toLocaleTimeString()}</div>
+        <div class="history-text">
+          ${getChannelIcon(r.primary_channel)} ${capitalize(r.primary_channel)} → ${r.target_device || 'ambient'}
+          · ${r.reason}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function toggleAnalysis() {
+  const btn = document.getElementById('startBtn');
+  if (isRunning) {
+    clearInterval(analysisInterval);
+    isRunning = false;
+    btn.textContent = 'Start';
+    setStatus('LIVE', false);
+  } else {
+    const interval = parseInt(document.getElementById('intervalSelect').value);
+    isRunning = true;
+    btn.textContent = 'Stop';
+    btn.classList.remove('primary');
+    btn.classList.add('danger');
+    setStatus('SCANNING', false);
+    analyze(); // immediate first
+    analysisInterval = setInterval(analyze, interval);
+  }
+}
+
+function analyzeOnce() {
+  analyze();
+}
+
+function getChannelIcon(channel) {
+  const map = {
+    voice: '🔊', screen: '🖥', notification: '🔔',
+    vibration: '📳', ambient_light: '💡', none: '🤫',
+    text: '💬', visual: '👁', haptic: '📳', ambient: '✨'
+  };
+  return map[channel] || '📡';
+}
+
+function getDeviceIcon(type) {
+  const map = {
+    laptop: '💻', phone: '📱', tablet: '📱', tv: '📺',
+    speaker: '🔈', watch: '⌚', monitor: '🖥', other: '📟'
+  };
+  return map[type] || '📟';
+}
+
+function capitalize(s) {
+  return s ? s.charAt(0).toUpperCase() + s.slice(1).replace(/_/g, ' ') : '';
+}
+
+// Persist config
+document.getElementById('apiKey').value = localStorage.getItem('ambient_api_key') || '';
+document.getElementById('baseUrl').value = localStorage.getItem('ambient_base_url') || 'https://api.openai.com/v1';
+document.getElementById('modelName').value = localStorage.getItem('ambient_model') || 'gpt-4o';
+document.getElementById('providerSelect').value = localStorage.getItem('ambient_provider') || 'openai';
+
+document.getElementById('apiKey').addEventListener('change', e => {
+  localStorage.setItem('ambient_api_key', e.target.value);
+});
+document.getElementById('baseUrl').addEventListener('change', e => {
+  localStorage.setItem('ambient_base_url', e.target.value);
+});
+document.getElementById('modelName').addEventListener('change', e => {
+  localStorage.setItem('ambient_model', e.target.value);
+});
+document.getElementById('providerSelect').addEventListener('change', e => {
+  localStorage.setItem('ambient_provider', e.target.value);
+  // Auto-fill defaults when switching provider
+  const base = document.getElementById('baseUrl');
+  const model = document.getElementById('modelName');
+  if (e.target.value === 'anthropic') {
+    if (!base.value || base.value.includes('openai.com')) base.value = 'https://api.anthropic.com';
+    if (!model.value || model.value.startsWith('gpt')) model.value = 'claude-sonnet-4-20250514';
+  } else {
+    if (!base.value || base.value.includes('anthropic.com')) base.value = 'https://api.openai.com/v1';
+    if (!model.value || model.value.startsWith('claude')) model.value = 'gpt-4o';
+  }
+  localStorage.setItem('ambient_base_url', base.value);
+  localStorage.setItem('ambient_model', model.value);
+});
+
+// Boot
+initCamera();
+</script>
+</body>
+</html>
