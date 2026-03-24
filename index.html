@@ -16,7 +16,7 @@
 }
 body { background: var(--bg); color: var(--text); font-family: var(--sans); height: 100vh; overflow: hidden; }
 
-.app { display: grid; grid-template-columns: 1fr 1fr; height: 100vh; }
+.app { display: grid; grid-template-columns: 1fr 2fr; height: 100vh; }
 
 /* ── Source panel ── */
 .source-panel { display: flex; flex-direction: column; border-right: 1px solid var(--border); }
@@ -206,6 +206,7 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); heig
       <div class="empty-state" id="emptyState"><div class="es-icon">👁</div><div class="es-text">填入密钥，点击「开始」<br>或上传图片进行分析</div></div>
     </div>
     <div class="config-controls">
+      <input class="cfg-input" type="text" id="userContent" placeholder="需要告知用户的内容（可选）" style="flex:2;margin-right:2px" />
       <button class="btn primary" id="startBtn" onclick="toggleAnalysis()">开始</button>
       <button class="btn" onclick="analyzeOnce()">分析一次</button>
     </div>
@@ -377,8 +378,13 @@ async function analyze() {
   if (!base64) { setStatus('无画面', false); return; }
 
   try {
+  const userContent = document.getElementById('userContent').value.trim();
+  const userPrompt = userContent
+    ? `分析这个场景。你看到了哪些人和设备？AI 现在需要告知用户以下内容：「${userContent}」——请根据场景推荐最佳的交互方式来传达这个信息。`
+    : '分析这个场景。你看到了哪些人和设备？现在 AI 用什么方式交互最合适？';
+
     const result = await AgenticCore.agenticAsk(
-      '分析这个场景。你看到了哪些人和设备？现在 AI 用什么方式交互最合适？',
+      userPrompt,
       { provider, apiKey, baseUrl, model, tools: [], stream: false, system: SYSTEM_PROMPT, images: [{ data: base64, media_type: 'image/jpeg' }] },
       () => {}
     );
