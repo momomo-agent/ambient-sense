@@ -60,22 +60,35 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); heig
 .results-panel { display: flex; flex-direction: column; border-right: 1px solid var(--border); overflow: hidden; }
 .results-body { flex:1; display: flex; flex-direction: column; overflow: hidden; }
 
-.stats-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap:6px; padding:10px 14px; border-bottom:1px solid var(--border); flex-shrink:0; }
-.stat-card { background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:10px; text-align:center; }
-.stat-card .stat-icon { font-size:20px; margin-bottom:2px; }
-.stat-card .stat-value { font-size:26px; font-weight:300; font-family:var(--mono); line-height:1.2; }
-.stat-card .stat-label { font-size:9px; color:var(--text3); margin-top:2px; }
-.stat-card.highlight { border-color:rgba(74,222,128,0.2); background:rgba(74,222,128,0.04); }
+.stats-row { display: none; }
 
-.rec-visual { padding:10px 14px; border-bottom:1px solid var(--border); flex-shrink:0; }
-.rec-banner { background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:12px 14px; display:flex; align-items:center; gap:12px; }
-.rec-banner.active { border-color:rgba(74,222,128,0.2); background:rgba(74,222,128,0.04); }
-.rec-banner .rb-icon { font-size:28px; flex-shrink:0; }
-.rec-banner .rb-content { flex:1; min-width:0; }
-.rec-banner .rb-title { font-size:14px; font-weight:500; margin-bottom:2px; }
-.rec-banner .rb-desc { font-size:11px; color:var(--text2); line-height:1.5; }
-.rec-banner .rb-example { font-size:10px; color:var(--text3); font-style:italic; margin-top:3px; }
-.rec-banner .rb-badge { padding:2px 8px; border-radius:8px; font-size:9px; font-family:var(--mono); color:var(--accent); background:rgba(74,222,128,0.1); flex-shrink:0; align-self:flex-start; }
+/* Scene topology */
+.scene-topo { padding: 12px 14px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.topo-svg { width: 100%; height: 160px; }
+.topo-node { cursor: default; }
+.topo-node text { fill: var(--text); font-family: var(--sans); font-size: 10px; text-anchor: middle; }
+.topo-node .node-icon { font-size: 24px; }
+.topo-node .node-label { fill: var(--text2); font-size: 8px; }
+.topo-node .node-sub { fill: var(--text3); font-size: 7px; font-family: var(--mono); }
+.topo-path { fill: none; stroke: var(--accent); stroke-width: 1.5; opacity: 0.5; stroke-dasharray: 6 3; animation: dash 1.5s linear infinite; }
+.topo-path.alt { stroke: var(--text3); stroke-dasharray: 3 4; opacity: 0.3; animation: none; }
+@keyframes dash { to { stroke-dashoffset: -18; } }
+.topo-ai-glow { fill: rgba(74,222,128,0.08); stroke: rgba(74,222,128,0.15); stroke-width: 1; }
+.topo-device-ring { fill: var(--surface); stroke: var(--border); stroke-width: 1; }
+.topo-device-ring.active { stroke: rgba(74,222,128,0.3); fill: rgba(74,222,128,0.04); }
+.topo-person-ring { fill: var(--surface); stroke: var(--border); stroke-width: 1; }
+
+/* Interaction card */
+.interaction-card { padding: 10px 14px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.ic-row { display: flex; gap: 8px; align-items: stretch; }
+.ic-main { flex: 1; background: rgba(74,222,128,0.04); border: 1px solid rgba(74,222,128,0.15); border-radius: 8px; padding: 10px 12px; }
+.ic-main .ic-header { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+.ic-main .ic-channel { font-size: 13px; font-weight: 500; }
+.ic-main .ic-style { font-size: 9px; font-family: var(--mono); color: var(--accent); background: rgba(74,222,128,0.1); padding: 1px 6px; border-radius: 6px; }
+.ic-main .ic-urgency { font-size: 9px; font-family: var(--mono); color: var(--warm); background: rgba(251,146,60,0.1); padding: 1px 6px; border-radius: 6px; margin-left: auto; }
+.ic-main .ic-content { font-size: 11px; color: var(--text); margin: 6px 0 4px; padding: 6px 8px; background: rgba(255,255,255,0.03); border-radius: 5px; border-left: 2px solid var(--accent); line-height: 1.5; }
+.ic-main .ic-reason { font-size: 10px; color: var(--text2); line-height: 1.4; }
+.ic-main .ic-example { font-size: 10px; color: var(--text3); font-style: italic; margin-top: 3px; }
 
 .detail-grid { flex:1; display:grid; grid-template-columns:1fr 1fr; overflow:hidden; }
 .detail-col { padding:8px 14px; overflow-y:auto; }
@@ -161,16 +174,24 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); heig
   <div class="results-panel">
     <div class="panel-bar"><h2>分析结果</h2></div>
     <div class="results-body" id="resultsBody">
-      <div class="stats-row" id="statsRow" style="display:none">
-        <div class="stat-card"><div class="stat-icon">👤</div><div class="stat-value" id="peopleCount">0</div><div class="stat-label">人数</div></div>
-        <div class="stat-card"><div class="stat-icon">📱</div><div class="stat-value" id="deviceCount">0</div><div class="stat-label">设备</div></div>
-        <div class="stat-card highlight"><div class="stat-icon" id="channelIcon">📡</div><div class="stat-value" id="channelName" style="font-size:14px">—</div><div class="stat-label">推荐方式</div></div>
+      <!-- Scene Topology -->
+      <div class="scene-topo" id="sceneTopo" style="display:none">
+        <svg class="topo-svg" id="topoSvg" viewBox="0 0 500 160" preserveAspectRatio="xMidYMid meet"></svg>
       </div>
-      <div class="rec-visual" id="recVisual" style="display:none">
-        <div class="rec-banner active" id="recBanner">
-          <div class="rb-icon" id="recIcon">📡</div>
-          <div class="rb-content"><div class="rb-title" id="recTitle">—</div><div class="rb-desc" id="recDesc"></div><div class="rb-example" id="recExample"></div></div>
-          <div class="rb-badge" id="recBadge"></div>
+
+      <!-- Interaction Card -->
+      <div class="interaction-card" id="interactionCard" style="display:none">
+        <div class="ic-row">
+          <div class="ic-main">
+            <div class="ic-header">
+              <span class="ic-channel" id="icChannel"></span>
+              <span class="ic-style" id="icStyle"></span>
+              <span class="ic-urgency" id="icUrgency"></span>
+            </div>
+            <div class="ic-content" id="icContent"></div>
+            <div class="ic-reason" id="icReason"></div>
+            <div class="ic-example" id="icExample"></div>
+          </div>
         </div>
       </div>
       <div class="detail-grid" id="detailGrid" style="display:none">
@@ -210,10 +231,10 @@ const SYSTEM_PROMPT = `你是一个环境感知分析器。你通过摄像头观
 请用以下 JSON 格式回复（所有文本内容用中文）：
 {
   "people": [
-    { "description": "简要描述", "activity": "在做什么", "attention": "专注/分心/空闲" }
+    { "id": "p1", "description": "简要描述（如：戴眼镜的男性）", "activity": "在做什么", "attention": "专注/分心/空闲" }
   ],
   "devices": [
-    { "type": "laptop|phone|tablet|tv|speaker|watch|monitor|other", "description": "简要描述", "screen_state": "开/关/未知" }
+    { "id": "d1", "type": "laptop|phone|tablet|tv|speaker|watch|monitor|other", "description": "简要描述", "screen_state": "开/关/未知" }
   ],
   "scene": {
     "setting": "办公室/家/厨房/户外等",
@@ -222,9 +243,12 @@ const SYSTEM_PROMPT = `你是一个环境感知分析器。你通过摄像头观
     "activity_type": "工作/聊天/做饭/休息/演示/走路/吃饭等"
   },
   "recommendation": {
-    "primary_channel": "语音|屏幕|通知|震动|环境光|不打扰",
-    "target_device": "用哪个设备，或'无'",
+    "primary_channel": "语音|屏幕|通知|震动|环境光|对话|主动告知|不打扰",
+    "target_device": "用哪个设备的id（如d1），或'无'",
+    "target_person": "目标人的id（如p1），或'所有人'",
     "modality": "文字|语音|视觉|触觉|环境",
+    "interaction_style": "对话（等用户回应）|主动告知（单向推送信息）|静默推送（后台同步）|环境感知（融入环境不打扰）",
+    "content": "具体想同步给用户的内容示例，如'您有一个15分钟后的会议'或'外卖已到楼下'",
     "urgency": "可以等|轻柔|立即",
     "reason": "1-2句话解释为什么这个方式最合适",
     "example": "举例说明 AI 会怎么响应"
@@ -236,7 +260,7 @@ const SYSTEM_PROMPT = `你是一个环境感知分析器。你通过摄像头观
   "context_tags": ["标签1", "标签2", "标签3"]
 }
 
-判断逻辑：手忙→语音，开会→静默通知，独自桌前→屏幕弹窗，多人→共享屏幕，走路→语音或手表震动，做饭→语音简短，演示→绝对不打扰。
+判断逻辑：手忙→语音，开会→静默通知，独自桌前→屏幕弹窗或对话，多人→共享屏幕，走路→语音或手表震动，做饭→语音简短主动告知，演示→绝对不打扰。
 只返回合法 JSON，不要 markdown 包裹。所有描述用中文。`;
 
 let video, canvas, ctx, analysisInterval = null, isRunning = false, history = [], sourceMode = 'camera', uploadedBase64 = null;
@@ -368,31 +392,32 @@ async function analyze() {
 function renderAnalysis(data) {
   document.getElementById('emptyState').style.display = 'none';
   document.getElementById('analyzingState').style.display = 'none';
-  // Stats
-  const pCount = (data.people || []).length;
-  const dCount = (data.devices || []).length;
+
+  const people = data.people || [];
+  const devices = data.devices || [];
   const rec = data.recommendation || {};
-  document.getElementById('peopleCount').textContent = pCount;
-  document.getElementById('deviceCount').textContent = dCount;
-  document.getElementById('channelIcon').textContent = getChannelIcon(rec.primary_channel);
-  document.getElementById('channelName').textContent = rec.primary_channel || '—';
-  document.getElementById('statsRow').style.display = '';
 
-  // Recommendation
-  document.getElementById('recIcon').textContent = getChannelIcon(rec.primary_channel);
-  document.getElementById('recTitle').textContent = `${rec.primary_channel || '—'} → ${rec.target_device || '环境'}`;
-  document.getElementById('recDesc').textContent = rec.reason || '';  document.getElementById('recExample').textContent = rec.example ? `"${rec.example}"` : '';
-  document.getElementById('recBadge').textContent = rec.urgency || '';
-  document.getElementById('recVisual').style.display = '';
+  // ── Scene Topology SVG ──
+  renderTopology(people, devices, rec);
+  document.getElementById('sceneTopo').style.display = '';
 
-  // Detected
+  // ── Interaction Card ──
+  document.getElementById('icChannel').textContent = `${getChannelIcon(rec.primary_channel)} ${rec.primary_channel || '—'}`;
+  document.getElementById('icStyle').textContent = rec.interaction_style || rec.modality || '';
+  document.getElementById('icUrgency').textContent = rec.urgency || '';
+  document.getElementById('icContent').textContent = rec.content || rec.example || '';
+  document.getElementById('icReason').textContent = rec.reason || '';
+  document.getElementById('icExample').textContent = rec.example ? `示例：${rec.example}` : '';
+  document.getElementById('interactionCard').style.display = '';
+
+  // Detected list
   const items = [
-    ...(data.people || []).map(p => ({ icon: '👤', name: p.description, type: `${p.activity} · ${p.attention}` })),
-    ...(data.devices || []).map(d => ({ icon: getDeviceIcon(d.type), name: d.description, type: `${d.type} · ${d.screen_state}` }))
+    ...people.map(p => ({ icon: '👤', name: p.description, type: `${p.activity} · ${p.attention}` })),
+    ...devices.map(d => ({ icon: getDeviceIcon(d.type), name: d.description, type: `${d.type} · ${d.screen_state}` }))
   ];
   document.getElementById('detectedList').innerHTML = items.map(i => `<div class="det-item"><div class="di-icon">${i.icon}</div><div class="di-name">${i.name}</div><div class="di-type">${i.type}</div></div>`).join('');
 
-  // Context
+  // Context tags
   const scene = data.scene || {};
   const tags = [scene.setting, scene.lighting, scene.noise_level, scene.activity_type, ...(data.context_tags || [])].filter(Boolean);
   document.getElementById('contextTags').innerHTML = tags.map(t => `<div class="ctx-tag">${t}</div>`).join('');
@@ -402,9 +427,77 @@ function renderAnalysis(data) {
   document.getElementById('altText').textContent = alt ? `${getChannelIcon(alt.channel)} ${alt.channel}：${alt.reason}` : '';
 
   document.getElementById('detailGrid').style.display = '';
-
-  // Raw
   document.getElementById('rawOutput').textContent = JSON.stringify(data, null, 2);
+}
+
+function renderTopology(people, devices, rec) {
+  const svg = document.getElementById('topoSvg');
+  const W = 500, H = 160;
+  const aiX = 50, aiY = H / 2;
+
+  // Layout: AI on left, devices in middle, people on right
+  const devCount = Math.max(devices.length, 1);
+  const pplCount = Math.max(people.length, 1);
+  const devX = 200, pplX = 400;
+
+  let svgContent = '';
+
+  // AI node (center-left)
+  svgContent += `<circle cx="${aiX}" cy="${aiY}" r="28" class="topo-ai-glow"/>`;
+  svgContent += `<text x="${aiX}" y="${aiY-2}" text-anchor="middle" class="node-icon" style="font-size:22px;fill:var(--text)">🤖</text>`;
+  svgContent += `<text x="${aiX}" y="${aiY+18}" text-anchor="middle" style="font-size:8px;fill:var(--accent);font-family:var(--mono)">AI</text>`;
+
+  // Device nodes
+  devices.forEach((d, i) => {
+    const y = devCount === 1 ? H/2 : 30 + (H-60) * i / (devCount-1);
+    const isTarget = rec.target_device === d.id || rec.target_device === d.description;
+    const cls = isTarget ? 'topo-device-ring active' : 'topo-device-ring';
+
+    svgContent += `<circle cx="${devX}" cy="${y}" r="22" class="${cls}"/>`;
+    svgContent += `<text x="${devX}" y="${y+4}" text-anchor="middle" style="font-size:18px">${getDeviceIcon(d.type)}</text>`;
+    svgContent += `<text x="${devX}" y="${y+36}" text-anchor="middle" class="node-label" style="font-size:7px;fill:var(--text3)">${d.description.slice(0,8)}</text>`;
+
+    // Line from AI to device
+    const pathCls = isTarget ? 'topo-path' : 'topo-path alt';
+    const ctrl1x = aiX + 50, ctrl2x = devX - 50;
+    svgContent += `<path d="M${aiX+28},${aiY} C${ctrl1x},${aiY} ${ctrl2x},${y} ${devX-22},${y}" class="${pathCls}"/>`;
+
+    // Lines from device to people
+    people.forEach((p, j) => {
+      const py = pplCount === 1 ? H/2 : 30 + (H-60) * j / (pplCount-1);
+      const isPrimary = isTarget && (rec.target_person === p.id || rec.target_person === '所有人');
+      const lpCls = isPrimary ? 'topo-path' : 'topo-path alt';
+      const c1x = devX + 50, c2x = pplX - 50;
+      svgContent += `<path d="M${devX+22},${y} C${c1x},${y} ${c2x},${py} ${pplX-20},${py}" class="${lpCls}"/>`;
+    });
+  });
+
+  // If no devices, direct AI→people lines
+  if (devices.length === 0) {
+    people.forEach((p, j) => {
+      const py = pplCount === 1 ? H/2 : 30 + (H-60) * j / (pplCount-1);
+      svgContent += `<path d="M${aiX+28},${aiY} C${150},${aiY} ${300},${py} ${pplX-20},${py}" class="topo-path"/>`;
+    });
+  }
+
+  // People nodes
+  people.forEach((p, i) => {
+    const y = pplCount === 1 ? H/2 : 30 + (H-60) * i / (pplCount-1);
+    svgContent += `<circle cx="${pplX}" cy="${y}" r="20" class="topo-person-ring"/>`;
+    svgContent += `<text x="${pplX}" y="${y+4}" text-anchor="middle" style="font-size:16px">👤</text>`;
+    svgContent += `<text x="${pplX}" y="${y+34}" text-anchor="middle" class="node-label" style="font-size:7px;fill:var(--text3)">${p.description.slice(0,8)}</text>`;
+    // Attention badge
+    const attnColor = p.attention === '专注' ? 'var(--warm)' : p.attention === '空闲' ? 'var(--accent)' : 'var(--text3)';
+    svgContent += `<text x="${pplX}" y="${y-22}" text-anchor="middle" style="font-size:6px;fill:${attnColor};font-family:var(--mono)">${p.attention}</text>`;
+  });
+
+  // Channel label on the primary path
+  if (rec.primary_channel) {
+    svgContent += `<rect x="${115}" y="${aiY-18}" width="${70}" height="16" rx="4" fill="rgba(74,222,128,0.1)" stroke="rgba(74,222,128,0.15)" stroke-width="0.5"/>`;
+    svgContent += `<text x="${150}" y="${aiY-8}" text-anchor="middle" style="font-size:7px;fill:var(--accent);font-family:var(--mono)">${getChannelIcon(rec.primary_channel)} ${rec.primary_channel}</text>`;
+  }
+
+  svg.innerHTML = svgContent;
 }
 
 function renderHistory() {
