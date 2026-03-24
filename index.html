@@ -470,6 +470,12 @@ body {
 
     <div class="config-section">
       <div class="config-row">
+        <label>摄像头</label>
+        <select class="interval-select" id="cameraSelect">
+          <option value="">加载中...</option>
+        </select>
+      </div>
+      <div class="config-row">
         <label>服务商</label>
         <select class="interval-select" id="providerSelect">
           <option value="openai">OpenAI</option>
@@ -599,22 +605,50 @@ let isRunning = false;
 let history = [];
 
 // Init camera
-async function initCamera() {
+async function initCamera(deviceId) {
   video = document.getElementById('video');
   canvas = document.getElementById('captureCanvas');
   ctx = canvas.getContext('2d');
 
+  // Stop existing stream
+  if (video.srcObject) {
+    video.srcObject.getTracks().forEach(t => t.stop());
+  }
+
+  const constraints = {
+    video: deviceId
+      ? { deviceId: { exact: deviceId }, width: { ideal: 1280 }, height: { ideal: 720 } }
+      : { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
+  };
+
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } }
-    });
+    const stream = await navigator.mediaDevices.getUserMedia(constraints);
     video.srcObject = stream;
     setStatus('实时', false);
+
+    // Enumerate cameras after permission granted
+    await loadCameraList();
   } catch (e) {
     setStatus('无摄像头', false);
     console.error('Camera error:', e);
   }
 }
+
+async function loadCameraList() {
+  const devices = await navigator.mediaDevices.enumerateDevices();
+  const cameras = devices.filter(d => d.kind === 'videoinput');
+  const select = document.getElementById('cameraSelect');
+  const currentTrack = video.srcObject?.getVideoTracks()[0];
+  const currentId = currentTrack?.getSettings().deviceId;
+
+  select.innerHTML = cameras.map((cam, i) =>
+    `<option value="${cam.deviceId}" ${cam.deviceId === currentId ? 'selected' : ''}>${cam.label || '摄像头 ' + (i + 1)}</option>`
+  ).join('');
+}
+
+document.getElementById('cameraSelect').addEventListener('change', e => {
+  if (e.target.value) initCamera(e.target.value);
+});
 
 function setStatus(text, analyzing) {
   document.getElementById('statusText').textContent = text;
