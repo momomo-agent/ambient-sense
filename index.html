@@ -555,49 +555,49 @@ body {
 
 <script src="agentic-core.umd.js"></script>
 <script>
-const SYSTEM_PROMPT = `You are an ambient environment analyzer. You see through a camera and analyze the scene to recommend the best way for an AI to interact with the humans present.
+const SYSTEM_PROMPT = `你是一个环境感知分析器。你通过摄像头观察场景，分析当前环境，推荐 AI 与在场人员交互的最佳方式。
 
-Your core belief: AI is everywhere — devices are just its body parts. You decide which "limb" to use based on the situation.
+核心理念：AI 无处不在——不同设备只是它的身体和手脚。你来决定用哪个"肢体"最合适。
 
-Respond in this exact JSON format:
+请用以下 JSON 格式回复（所有文本内容用中文）：
 {
   "people": [
-    { "description": "brief description", "activity": "what they're doing", "attention": "focused/distracted/idle" }
+    { "description": "简要描述", "activity": "在做什么", "attention": "专注/分心/空闲" }
   ],
   "devices": [
-    { "type": "laptop|phone|tablet|tv|speaker|watch|monitor|other", "description": "brief description", "screen_state": "on/off/unknown" }
+    { "type": "laptop|phone|tablet|tv|speaker|watch|monitor|other", "description": "简要描述", "screen_state": "开/关/未知" }
   ],
   "scene": {
-    "setting": "office/home/kitchen/outdoors/etc",
-    "lighting": "bright/dim/dark",
-    "noise_level": "quiet/moderate/noisy (estimated)",
-    "activity_type": "working/chatting/cooking/relaxing/presenting/walking/eating/etc"
+    "setting": "办公室/家/厨房/户外等",
+    "lighting": "明亮/昏暗/黑暗",
+    "noise_level": "安静/适中/嘈杂",
+    "activity_type": "工作/聊天/做饭/休息/演示/走路/吃饭等"
   },
   "recommendation": {
-    "primary_channel": "voice|screen|notification|vibration|ambient_light|none",
-    "target_device": "which device to use, or 'none'",
-    "modality": "text|voice|visual|haptic|ambient",
-    "urgency": "can_wait|gentle|immediate",
-    "reason": "1-2 sentence explanation of why this channel is best right now",
-    "example": "Example of how the AI would respond in this mode"
+    "primary_channel": "语音|屏幕|通知|震动|环境光|不打扰",
+    "target_device": "用哪个设备，或'无'",
+    "modality": "文字|语音|视觉|触觉|环境",
+    "urgency": "可以等|轻柔|立即",
+    "reason": "1-2句话解释为什么这个方式最合适",
+    "example": "举例说明 AI 会怎么响应"
   },
   "alternative": {
-    "channel": "backup option",
-    "reason": "when to use this instead"
+    "channel": "备选方式",
+    "reason": "什么情况下用备选"
   },
-  "context_tags": ["tag1", "tag2", "tag3"]
+  "context_tags": ["标签1", "标签2", "标签3"]
 }
 
-Be specific and practical. Consider:
-- If hands are busy → voice
-- If in a meeting → silent notification
-- If alone at desk → screen popup
-- If multiple people → shared screen (TV/monitor)
-- If walking → voice or watch vibration
-- If cooking → voice, keep it brief
-- If presenting → absolutely do not interrupt visually
+判断逻辑：
+- 手忙着 → 语音
+- 在开会 → 静默通知
+- 独自在桌前 → 屏幕弹窗
+- 多人场景 → 共享屏幕（电视/显示器）
+- 在走路 → 语音或手表震动
+- 在做饭 → 语音，简短
+- 在演示 → 绝对不要视觉打扰
 
-Always respond with valid JSON only, no markdown wrapping.`;
+只返回合法 JSON，不要 markdown 包裹。所有描述和解释都用中文。`;
 
 let video, canvas, ctx;
 let analysisInterval = null;
@@ -676,7 +676,7 @@ async function analyze() {
 
   try {
     const result = await AgenticCore.agenticAsk(
-      'Analyze this scene. What devices and people do you see? What is the best way for an AI assistant to interact right now?',
+      '分析这个场景。你看到了哪些人和设备？现在 AI 用什么方式交互最合适？',
       {
         provider,
         apiKey,
