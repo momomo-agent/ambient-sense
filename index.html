@@ -7,546 +7,191 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600&family=JetBrains+Mono:wght@300;400&display=swap" rel="stylesheet">
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
-
 :root {
-  --bg: #0a0a0b;
-  --surface: rgba(255,255,255,0.03);
-  --surface2: rgba(255,255,255,0.06);
-  --border: rgba(255,255,255,0.06);
-  --text: rgba(255,255,255,0.85);
-  --text2: rgba(255,255,255,0.45);
-  --text3: rgba(255,255,255,0.25);
-  --accent: #4ade80;
-  --accent2: #22d3ee;
-  --warm: #fb923c;
-  --mono: 'JetBrains Mono', monospace;
-  --sans: 'DM Sans', -apple-system, sans-serif;
+  --bg: #0a0a0b; --surface: rgba(255,255,255,0.03); --surface2: rgba(255,255,255,0.06);
+  --border: rgba(255,255,255,0.06); --text: rgba(255,255,255,0.85);
+  --text2: rgba(255,255,255,0.45); --text3: rgba(255,255,255,0.25);
+  --accent: #4ade80; --accent2: #22d3ee; --warm: #fb923c;
+  --mono: 'JetBrains Mono', monospace; --sans: 'DM Sans', -apple-system, sans-serif;
 }
+body { background: var(--bg); color: var(--text); font-family: var(--sans); height: 100vh; overflow: hidden; }
 
-body {
-  background: var(--bg);
-  color: var(--text);
-  font-family: var(--sans);
-  height: 100vh;
-  overflow: hidden;
-}
+.app { display: grid; grid-template-columns: 1fr 1fr 320px; height: 100vh; }
 
-/* ── Layout ── */
-.app {
-  display: grid;
-  grid-template-columns: 1fr 420px;
-  height: 100vh;
-  gap: 0;
-}
+/* ── Source panel ── */
+.source-panel { display: flex; flex-direction: column; border-right: 1px solid var(--border); }
+.panel-bar { padding: 10px 14px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.panel-bar h2 { font-size: 12px; font-weight: 500; flex: 1; }
+.tab-btn { padding: 3px 10px; font-size: 10px; border-radius: 5px; border: 1px solid var(--border); background: transparent; color: var(--text3); cursor: pointer; font-family: var(--sans); }
+.tab-btn.active { background: var(--surface2); color: var(--text); border-color: rgba(255,255,255,0.12); }
 
-/* ── Camera Panel ── */
-.camera-panel {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #000;
-  overflow: hidden;
-}
+.source-view { flex: 1; position: relative; background: #000; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.source-view video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
+.upload-zone { display: none; flex-direction: column; align-items: center; gap: 10px; color: var(--text3); cursor: pointer; width: 100%; height: 100%; justify-content: center; }
+.upload-zone.active { display: flex; }
+.upload-zone .uz-icon { font-size: 36px; opacity: 0.25; }
+.upload-zone .uz-text { font-size: 11px; }
+.upload-zone.dragover { background: rgba(74,222,128,0.05); }
+.preview-img { display: none; max-width: 100%; max-height: 100%; object-fit: contain; }
 
-.camera-panel video {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  transform: scaleX(-1);
-}
+.cam-overlay { position: absolute; inset: 0; pointer-events: none; }
+.scan-line { position: absolute; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, transparent, var(--accent), transparent); opacity: 0; animation: scan 4s ease-in-out infinite; }
+@keyframes scan { 0% { top:0; opacity:0; } 10% { opacity:0.4; } 90% { opacity:0.4; } 100% { top:100%; opacity:0; } }
+.corner { position: absolute; width: 18px; height: 18px; }
+.corner::before, .corner::after { content:''; position: absolute; background: var(--accent); opacity: 0.4; }
+.corner-tl { top:10px; left:10px; } .corner-tl::before { width:18px; height:1.5px; } .corner-tl::after { width:1.5px; height:18px; }
+.corner-tr { top:10px; right:10px; } .corner-tr::before { right:0; width:18px; height:1.5px; } .corner-tr::after { right:0; width:1.5px; height:18px; }
+.corner-bl { bottom:10px; left:10px; } .corner-bl::before { bottom:0; width:18px; height:1.5px; } .corner-bl::after { bottom:0; width:1.5px; height:18px; }
+.corner-br { bottom:10px; right:10px; } .corner-br::before { bottom:0; right:0; width:18px; height:1.5px; } .corner-br::after { bottom:0; right:0; width:1.5px; height:18px; }
+.cam-status { position: absolute; top:10px; left:50%; transform: translateX(-50%); display: flex; align-items: center; gap:5px; padding:3px 10px; background: rgba(0,0,0,0.6); backdrop-filter: blur(8px); border:1px solid var(--border); border-radius:14px; font-size:10px; font-family: var(--mono); color: var(--text2); }
+.cam-status .dot { width:5px; height:5px; border-radius:50%; background: var(--accent); animation: blink 2s ease-in-out infinite; }
+.cam-status.analyzing .dot { background: var(--warm); animation: blink 0.5s ease-in-out infinite; }
+@keyframes blink { 0%,100% { opacity:1; } 50% { opacity:0.3; } }
 
-.camera-overlay {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-}
+.captured-frame { position: absolute; bottom:10px; right:10px; width:100px; border-radius:5px; border:1px solid var(--border); overflow: hidden; opacity:0; transition: opacity 0.3s; }
+.captured-frame.visible { opacity:1; }
+.captured-frame img { width:100%; display:block; }
+.captured-frame .cf-label { position:absolute; bottom:0; left:0; right:0; padding:2px; background:rgba(0,0,0,0.7); font-size:8px; font-family:var(--mono); color:var(--text3); text-align:center; }
 
-/* Scan line animation */
-.scan-line {
-  position: absolute;
-  left: 0; right: 0;
-  height: 2px;
-  background: linear-gradient(90deg, transparent, var(--accent), transparent);
-  opacity: 0;
-  animation: scan 4s ease-in-out infinite;
-}
-@keyframes scan {
-  0% { top: 0; opacity: 0; }
-  10% { opacity: 0.4; }
-  90% { opacity: 0.4; }
-  100% { top: 100%; opacity: 0; }
-}
+.source-bottom { padding:8px 14px; border-top:1px solid var(--border); flex-shrink:0; }
+.source-bottom select { width:100%; background:var(--surface); border:1px solid var(--border); border-radius:5px; color:var(--text); padding:5px 8px; font-size:11px; font-family:var(--mono); outline:none; }
 
-/* Corner markers */
-.corner { position: absolute; width: 24px; height: 24px; }
-.corner::before, .corner::after {
-  content: ''; position: absolute;
-  background: var(--accent); opacity: 0.4;
-}
-.corner-tl { top: 20px; left: 20px; }
-.corner-tl::before { top: 0; left: 0; width: 24px; height: 1.5px; }
-.corner-tl::after { top: 0; left: 0; width: 1.5px; height: 24px; }
-.corner-tr { top: 20px; right: 20px; }
-.corner-tr::before { top: 0; right: 0; width: 24px; height: 1.5px; }
-.corner-tr::after { top: 0; right: 0; width: 1.5px; height: 24px; }
-.corner-bl { bottom: 20px; left: 20px; }
-.corner-bl::before { bottom: 0; left: 0; width: 24px; height: 1.5px; }
-.corner-bl::after { bottom: 0; left: 0; width: 1.5px; height: 24px; }
-.corner-br { bottom: 20px; right: 20px; }
-.corner-br::before { bottom: 0; right: 0; width: 24px; height: 1.5px; }
-.corner-br::after { bottom: 0; right: 0; width: 1.5px; height: 24px; }
+/* ── Results panel ── */
+.results-panel { display: flex; flex-direction: column; border-right: 1px solid var(--border); overflow: hidden; }
+.results-body { flex:1; display: flex; flex-direction: column; overflow: hidden; }
 
-/* Status badge on camera */
-.camera-status {
-  position: absolute;
-  top: 20px; left: 50%;
-  transform: translateX(-50%);
-  display: flex; align-items: center; gap: 6px;
-  padding: 6px 14px;
-  background: rgba(0,0,0,0.6);
-  backdrop-filter: blur(8px);
-  border: 1px solid var(--border);
-  border-radius: 20px;
-  font-size: 11px;
-  font-family: var(--mono);
-  color: var(--text2);
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
-}
-.camera-status .dot {
-  width: 6px; height: 6px;
-  border-radius: 50%;
-  background: var(--accent);
-  animation: blink 2s ease-in-out infinite;
-}
-.camera-status.analyzing .dot {
-  background: var(--warm);
-  animation: blink 0.5s ease-in-out infinite;
-}
-@keyframes blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.3; }
-}
+.stats-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap:6px; padding:10px 14px; border-bottom:1px solid var(--border); flex-shrink:0; }
+.stat-card { background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:10px; text-align:center; }
+.stat-card .stat-icon { font-size:20px; margin-bottom:2px; }
+.stat-card .stat-value { font-size:26px; font-weight:300; font-family:var(--mono); line-height:1.2; }
+.stat-card .stat-label { font-size:9px; color:var(--text3); margin-top:2px; }
+.stat-card.highlight { border-color:rgba(74,222,128,0.2); background:rgba(74,222,128,0.04); }
 
-/* Detection boxes overlay */
-.detection-box {
-  position: absolute;
-  border: 1.5px solid var(--accent);
-  border-radius: 6px;
-  opacity: 0.6;
-  transition: all 0.5s ease;
-}
-.detection-box .det-label {
-  position: absolute;
-  top: -22px; left: -1px;
-  font-size: 10px;
-  font-family: var(--mono);
-  color: var(--bg);
-  background: var(--accent);
-  padding: 2px 8px;
-  border-radius: 3px;
-  white-space: nowrap;
-}
-.detection-box.device {
-  border-color: var(--accent2);
-}
-.detection-box.device .det-label {
-  background: var(--accent2);
-}
+.rec-visual { padding:10px 14px; border-bottom:1px solid var(--border); flex-shrink:0; }
+.rec-banner { background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:12px 14px; display:flex; align-items:center; gap:12px; }
+.rec-banner.active { border-color:rgba(74,222,128,0.2); background:rgba(74,222,128,0.04); }
+.rec-banner .rb-icon { font-size:28px; flex-shrink:0; }
+.rec-banner .rb-content { flex:1; min-width:0; }
+.rec-banner .rb-title { font-size:14px; font-weight:500; margin-bottom:2px; }
+.rec-banner .rb-desc { font-size:11px; color:var(--text2); line-height:1.5; }
+.rec-banner .rb-example { font-size:10px; color:var(--text3); font-style:italic; margin-top:3px; }
+.rec-banner .rb-badge { padding:2px 8px; border-radius:8px; font-size:9px; font-family:var(--mono); color:var(--accent); background:rgba(74,222,128,0.1); flex-shrink:0; align-self:flex-start; }
 
-/* ── Analysis Panel ── */
-.analysis-panel {
-  display: flex;
-  flex-direction: column;
-  border-left: 1px solid var(--border);
-  background: var(--bg);
-  overflow: hidden;
-}
+.detail-grid { flex:1; display:grid; grid-template-columns:1fr 1fr; overflow:hidden; }
+.detail-col { padding:8px 14px; overflow-y:auto; }
+.detail-col:first-child { border-right:1px solid var(--border); }
+.detail-col::-webkit-scrollbar { width:2px; }
+.detail-col::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.06); }
+.detail-title { font-size:9px; font-family:var(--mono); color:var(--text3); text-transform:uppercase; letter-spacing:1px; margin-bottom:6px; }
+.det-item { display:flex; align-items:center; gap:6px; padding:4px 6px; background:var(--surface); border:1px solid var(--border); border-radius:5px; font-size:10px; margin-bottom:3px; }
+.det-item .di-icon { font-size:13px; }
+.det-item .di-name { flex:1; }
+.det-item .di-type { font-size:8px; font-family:var(--mono); color:var(--text3); }
+.ctx-tags { display:flex; flex-wrap:wrap; gap:3px; }
+.ctx-tag { font-size:10px; padding:2px 7px; border-radius:8px; background:var(--surface2); border:1px solid var(--border); color:var(--text2); }
 
-.panel-header {
-  padding: 20px 24px 16px;
-  border-bottom: 1px solid var(--border);
-}
-.panel-header h1 {
-  font-size: 15px;
-  font-weight: 500;
-  letter-spacing: -0.3px;
-  margin-bottom: 4px;
-}
-.panel-header .subtitle {
-  font-size: 11px;
-  color: var(--text3);
-  font-family: var(--mono);
-  text-transform: uppercase;
-  letter-spacing: 1px;
-}
+.empty-state { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+.empty-state .es-icon { font-size:26px; margin-bottom:8px; opacity:0.2; }
+.empty-state .es-text { font-size:11px; color:var(--text3); line-height:1.6; text-align:center; }
 
-/* Config section */
-.config-section {
-  padding: 14px 24px;
-  border-bottom: 1px solid var(--border);
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  flex-wrap: wrap;
-}
-.config-section label {
-  font-size: 10px;
-  color: var(--text3);
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  font-family: var(--mono);
-  flex-shrink: 0;
-}
-.config-section input {
-  flex: 1;
-  min-width: 0;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  color: var(--text);
-  padding: 7px 10px;
-  font-size: 12px;
-  font-family: var(--mono);
-  outline: none;
-}
-.config-section input:focus {
-  border-color: rgba(255,255,255,0.15);
-}
-.config-section input::placeholder {
-  color: var(--text3);
-}
-.config-row {
-  display: flex;
-  gap: 8px;
-  width: 100%;
-  align-items: center;
-}
+/* ── Config panel ── */
+.config-panel { display:flex; flex-direction:column; overflow:hidden; }
+.config-body { flex:1; overflow-y:auto; padding:10px 14px; }
+.config-body::-webkit-scrollbar { width:2px; }
+.config-body::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.06); }
+.cfg-group { margin-bottom:10px; }
+.cfg-label { font-size:9px; font-family:var(--mono); color:var(--text3); text-transform:uppercase; letter-spacing:1px; margin-bottom:3px; }
+.cfg-input { width:100%; background:var(--surface); border:1px solid var(--border); border-radius:5px; color:var(--text); padding:6px 8px; font-size:11px; font-family:var(--mono); outline:none; }
+.cfg-input:focus { border-color:rgba(255,255,255,0.15); }
+.cfg-input::placeholder { color:var(--text3); }
 
-/* Scroll area */
-.analysis-scroll {
-  flex: 1;
-  overflow-y: auto;
-  padding: 0;
-}
-.analysis-scroll::-webkit-scrollbar { width: 3px; }
-.analysis-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 3px; }
+.hist-item { padding:5px 0; border-bottom:1px solid var(--border); }
+.hist-item:last-child { border-bottom:none; }
+.hist-time { font-family:var(--mono); color:var(--text3); font-size:8px; }
+.hist-text { color:var(--text2); font-size:10px; margin-top:1px; line-height:1.4; }
 
-/* Section */
-.section {
-  padding: 18px 24px;
-  border-bottom: 1px solid var(--border);
-}
-.section-title {
-  font-size: 9px;
-  font-family: var(--mono);
-  color: var(--text3);
-  text-transform: uppercase;
-  letter-spacing: 1.5px;
-  margin-bottom: 12px;
-}
+.raw-toggle { font-size:9px; color:var(--text3); cursor:pointer; border:none; background:none; font-family:var(--mono); padding:3px 0; }
+.raw-toggle:hover { color:var(--text2); }
+.raw-output { font-family:var(--mono); font-size:9px; color:var(--text2); line-height:1.4; white-space:pre-wrap; word-break:break-word; background:var(--surface); border:1px solid var(--border); border-radius:5px; padding:6px; max-height:120px; overflow-y:auto; display:none; margin-top:4px; }
+.raw-output.visible { display:block; }
 
-/* Recommendation card */
-.recommendation {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 16px;
-  margin-bottom: 10px;
-  transition: all 0.3s;
-}
-.recommendation.primary {
-  border-color: rgba(74,222,128,0.2);
-  background: rgba(74,222,128,0.04);
-}
-.rec-header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 8px;
-}
-.rec-icon {
-  font-size: 22px;
-  line-height: 1;
-}
-.rec-title {
-  font-size: 14px;
-  font-weight: 500;
-}
-.rec-confidence {
-  margin-left: auto;
-  font-size: 10px;
-  font-family: var(--mono);
-  color: var(--accent);
-  background: rgba(74,222,128,0.1);
-  padding: 2px 8px;
-  border-radius: 10px;
-}
-.rec-body {
-  font-size: 12px;
-  line-height: 1.6;
-  color: var(--text2);
-}
+.config-controls { padding:10px 14px; border-top:1px solid var(--border); display:flex; gap:6px; flex-shrink:0; }
+.btn { flex:1; padding:8px; border-radius:6px; font-size:11px; font-family:var(--sans); font-weight:500; cursor:pointer; border:1px solid var(--border); background:var(--surface); color:var(--text); transition:all 0.2s; }
+.btn:hover { background:var(--surface2); }
+.btn.primary { background:rgba(74,222,128,0.1); border-color:rgba(74,222,128,0.2); color:var(--accent); }
+.btn.primary:hover { background:rgba(74,222,128,0.18); }
+.btn.danger { color:#f87171; border-color:rgba(248,113,113,0.15); }
+.btn.danger:hover { background:rgba(248,113,113,0.08); }
 
-/* Detected items */
-.detected-list {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.detected-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 12px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  font-size: 12px;
-}
-.detected-item .di-icon { font-size: 18px; }
-.detected-item .di-name { flex: 1; }
-.detected-item .di-type {
-  font-size: 10px;
-  font-family: var(--mono);
-  color: var(--text3);
-  text-transform: uppercase;
-}
-
-/* Context tags */
-.context-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-.ctx-tag {
-  font-size: 11px;
-  padding: 4px 10px;
-  border-radius: 14px;
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  color: var(--text2);
-}
-
-/* History */
-.history-item {
-  padding: 10px 0;
-  border-bottom: 1px solid var(--border);
-  font-size: 12px;
-}
-.history-item:last-child { border-bottom: none; }
-.history-time {
-  font-family: var(--mono);
-  font-size: 10px;
-  color: var(--text3);
-  margin-bottom: 3px;
-}
-.history-text {
-  color: var(--text2);
-  line-height: 1.5;
-}
-
-/* Controls */
-.controls {
-  padding: 16px 24px;
-  border-top: 1px solid var(--border);
-  display: flex;
-  gap: 8px;
-}
-.btn {
-  flex: 1;
-  padding: 10px;
-  border-radius: 8px;
-  font-size: 12px;
-  font-family: var(--sans);
-  font-weight: 500;
-  cursor: pointer;
-  border: 1px solid var(--border);
-  background: var(--surface);
-  color: var(--text);
-  transition: all 0.2s;
-}
-.btn:hover {
-  background: var(--surface2);
-  border-color: rgba(255,255,255,0.12);
-}
-.btn.primary {
-  background: rgba(74,222,128,0.1);
-  border-color: rgba(74,222,128,0.2);
-  color: var(--accent);
-}
-.btn.primary:hover {
-  background: rgba(74,222,128,0.18);
-}
-.btn.danger {
-  color: #f87171;
-  border-color: rgba(248,113,113,0.15);
-}
-.btn.danger:hover {
-  background: rgba(248,113,113,0.08);
-}
-
-/* Interval selector */
-.interval-select {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  color: var(--text);
-  padding: 7px 10px;
-  font-size: 12px;
-  font-family: var(--mono);
-  outline: none;
-  cursor: pointer;
-}
-
-/* Empty state */
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 40px 24px;
-  text-align: center;
-}
-.empty-state .es-icon { font-size: 32px; margin-bottom: 12px; opacity: 0.3; }
-.empty-state .es-text { font-size: 12px; color: var(--text3); line-height: 1.6; }
-
-/* Raw output */
-.raw-output {
-  font-family: var(--mono);
-  font-size: 11px;
-  color: var(--text2);
-  line-height: 1.6;
-  white-space: pre-wrap;
-  word-break: break-word;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 12px;
-  max-height: 200px;
-  overflow-y: auto;
-}
-
-/* Responsive */
-@media (max-width: 900px) {
-  .app {
-    grid-template-columns: 1fr;
-    grid-template-rows: 40vh 1fr;
-  }
-  .analysis-panel { border-left: none; border-top: 1px solid var(--border); }
-}
+@media (max-width:1000px) { .app { grid-template-columns:1fr 1fr; } .config-panel { display:none; } }
+@media (max-width:700px) { .app { grid-template-columns:1fr; grid-template-rows:35vh 1fr; } }
 </style>
 </head>
 <body>
-
 <div class="app">
-  <!-- Camera -->
-  <div class="camera-panel">
-    <video id="video" autoplay playsinline muted></video>
-    <canvas id="captureCanvas" style="display:none"></canvas>
-
-    <div class="camera-overlay">
-      <div class="scan-line"></div>
-      <div class="corner corner-tl"></div>
-      <div class="corner corner-tr"></div>
-      <div class="corner corner-bl"></div>
-      <div class="corner corner-br"></div>
-      <div id="detectionBoxes"></div>
+  <!-- Source -->
+  <div class="source-panel">
+    <div class="panel-bar">
+      <h2>画面采集</h2>
+      <button class="tab-btn active" id="tabCamera" onclick="switchSource('camera')">摄像头</button>
+      <button class="tab-btn" id="tabUpload" onclick="switchSource('upload')">上传</button>
     </div>
+    <div class="source-view" id="sourceView">
+      <video id="video" autoplay playsinline muted></video>
+      <canvas id="captureCanvas" style="display:none"></canvas>
+      <div class="cam-overlay" id="camOverlay">
+        <div class="scan-line"></div>
+        <div class="corner corner-tl"></div><div class="corner corner-tr"></div>
+        <div class="corner corner-bl"></div><div class="corner corner-br"></div>
+      </div>
+      <div class="cam-status" id="cameraStatus"><div class="dot"></div><span id="statusText">等待中</span></div>
+      <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()">
+        <div class="uz-icon">📷</div><div class="uz-text">点击或拖拽图片</div>
+      </div>
+      <img class="preview-img" id="previewImg" />
+      <input type="file" id="fileInput" accept="image/*" style="display:none" />
+      <div class="captured-frame" id="capturedFrame"><img id="capturedImg" /><div class="cf-label">采集帧</div></div>
+    </div>
+    <div class="source-bottom" id="sourceBottom"><select id="cameraSelect"><option value="">加载中...</option></select></div>
+  </div>
 
-    <div class="camera-status" id="cameraStatus">
-      <div class="dot"></div>
-      <span id="statusText">等待中</span>
+  <!-- Results -->
+  <div class="results-panel">
+    <div class="panel-bar"><h2>分析结果</h2></div>
+    <div class="results-body" id="resultsBody">
+      <div class="stats-row" id="statsRow" style="display:none">
+        <div class="stat-card"><div class="stat-icon">👤</div><div class="stat-value" id="peopleCount">0</div><div class="stat-label">人数</div></div>
+        <div class="stat-card"><div class="stat-icon">📱</div><div class="stat-value" id="deviceCount">0</div><div class="stat-label">设备</div></div>
+        <div class="stat-card highlight"><div class="stat-icon" id="channelIcon">📡</div><div class="stat-value" id="channelName" style="font-size:14px">—</div><div class="stat-label">推荐方式</div></div>
+      </div>
+      <div class="rec-visual" id="recVisual" style="display:none">
+        <div class="rec-banner active" id="recBanner">
+          <div class="rb-icon" id="recIcon">📡</div>
+          <div class="rb-content"><div class="rb-title" id="recTitle">—</div><div class="rb-desc" id="recDesc"></div><div class="rb-example" id="recExample"></div></div>
+          <div class="rb-badge" id="recBadge"></div>
+        </div>
+      </div>
+      <div class="detail-grid" id="detailGrid" style="display:none">
+        <div class="detail-col"><div class="detail-title">检测到的对象</div><div id="detectedList"></div></div>
+        <div class="detail-col"><div class="detail-title">场景上下文</div><div class="ctx-tags" id="contextTags"></div><div style="margin-top:8px"><div class="detail-title">备选方案</div><div id="altText" style="font-size:10px;color:var(--text2);line-height:1.4"></div></div></div>
+      </div>
+      <div class="empty-state" id="emptyState"><div class="es-icon">👁</div><div class="es-text">填入密钥，点击「开始」<br>或上传图片进行分析</div></div>
     </div>
   </div>
 
-  <!-- Analysis -->
-  <div class="analysis-panel">
-    <div class="panel-header">
-      <h1>环境感知</h1>
-      <div class="subtitle">Ambient Sense</div>
+  <!-- Config -->
+  <div class="config-panel">
+    <div class="panel-bar"><h2>设置</h2></div>
+    <div class="config-body">
+      <div class="cfg-group"><div class="cfg-label">服务商</div><select class="cfg-input" id="providerSelect"><option value="openai">OpenAI</option><option value="anthropic">Anthropic</option></select></div>
+      <div class="cfg-group"><div class="cfg-label">接口地址</div><input class="cfg-input" type="text" id="baseUrl" placeholder="https://api.openai.com/v1" /></div>
+      <div class="cfg-group"><div class="cfg-label">密钥</div><input class="cfg-input" type="password" id="apiKey" placeholder="sk-..." /></div>
+      <div class="cfg-group"><div class="cfg-label">模型</div><input class="cfg-input" type="text" id="modelName" placeholder="gpt-4o" /></div>
+      <div class="cfg-group"><div class="cfg-label">间隔</div><select class="cfg-input" id="intervalSelect"><option value="3000">3秒</option><option value="5000" selected>5秒</option><option value="10000">10秒</option><option value="15000">15秒</option></select></div>
+      <div class="history-section" id="historySection" style="display:none"><div class="detail-title" style="margin-top:10px">历史记录</div><div id="historyList"></div></div>
+      <div style="margin-top:8px"><button class="raw-toggle" onclick="toggleRaw()">▶ 原始数据</button><div class="raw-output" id="rawOutput"></div></div>
     </div>
-
-    <div class="config-section">
-      <div class="config-row">
-        <label>摄像头</label>
-        <select class="interval-select" id="cameraSelect">
-          <option value="">加载中...</option>
-        </select>
-      </div>
-      <div class="config-row">
-        <label>服务商</label>
-        <select class="interval-select" id="providerSelect">
-          <option value="openai">OpenAI</option>
-          <option value="anthropic">Anthropic</option>
-        </select>
-      </div>
-      <div class="config-row">
-        <label>接口地址</label>
-        <input type="text" id="baseUrl" placeholder="https://api.openai.com/v1" />
-      </div>
-      <div class="config-row">
-        <label>密钥</label>
-        <input type="password" id="apiKey" placeholder="sk-..." />
-      </div>
-      <div class="config-row">
-        <label>模型</label>
-        <input type="text" id="modelName" placeholder="gpt-4o" />
-      </div>
-      <div class="config-row">
-        <label>间隔</label>
-        <select class="interval-select" id="intervalSelect">
-          <option value="3000">3s</option>
-          <option value="5000" selected>5s</option>
-          <option value="10000">10s</option>
-          <option value="15000">15s</option>
-        </select>
-      </div>
-    </div>
-
-    <div class="analysis-scroll" id="analysisScroll">
-      <!-- Recommendation -->
-      <div class="section" id="recSection" style="display:none">
-        <div class="section-title">推荐交互方式</div>
-        <div id="recommendations"></div>
-      </div>
-
-      <!-- Detected -->
-      <div class="section" id="detectedSection" style="display:none">
-        <div class="section-title">检测到的对象</div>
-        <div class="detected-list" id="detectedList"></div>
-      </div>
-
-      <!-- Context -->
-      <div class="section" id="contextSection" style="display:none">
-        <div class="section-title">场景上下文</div>
-        <div class="context-tags" id="contextTags"></div>
-      </div>
-
-      <!-- Raw -->
-      <div class="section" id="rawSection" style="display:none">
-        <div class="section-title">原始数据</div>
-        <div class="raw-output" id="rawOutput"></div>
-      </div>
-
-      <!-- History -->
-      <div class="section" id="historySection" style="display:none">
-        <div class="section-title">历史记录</div>
-        <div id="historyList"></div>
-      </div>
-
-      <!-- Empty -->
-      <div class="empty-state" id="emptyState">
-        <div class="es-icon">👁</div>
-        <div class="es-text">
-          填入 API 密钥，点击「开始」<br>
-          开始环境感知分析
-        </div>
-      </div>
-    </div>
-
-    <div class="controls">
+    <div class="config-controls">
       <button class="btn primary" id="startBtn" onclick="toggleAnalysis()">开始</button>
       <button class="btn" onclick="analyzeOnce()">分析一次</button>
     </div>
@@ -588,67 +233,67 @@ const SYSTEM_PROMPT = `你是一个环境感知分析器。你通过摄像头观
   "context_tags": ["标签1", "标签2", "标签3"]
 }
 
-判断逻辑：
-- 手忙着 → 语音
-- 在开会 → 静默通知
-- 独自在桌前 → 屏幕弹窗
-- 多人场景 → 共享屏幕（电视/显示器）
-- 在走路 → 语音或手表震动
-- 在做饭 → 语音，简短
-- 在演示 → 绝对不要视觉打扰
+判断逻辑：手忙→语音，开会→静默通知，独自桌前→屏幕弹窗，多人→共享屏幕，走路→语音或手表震动，做饭→语音简短，演示→绝对不打扰。
+只返回合法 JSON，不要 markdown 包裹。所有描述用中文。`;
 
-只返回合法 JSON，不要 markdown 包裹。所有描述和解释都用中文。`;
+let video, canvas, ctx, analysisInterval = null, isRunning = false, history = [], sourceMode = 'camera', uploadedBase64 = null;
 
-let video, canvas, ctx;
-let analysisInterval = null;
-let isRunning = false;
-let history = [];
-
-// Init camera
 async function initCamera(deviceId) {
   video = document.getElementById('video');
   canvas = document.getElementById('captureCanvas');
   ctx = canvas.getContext('2d');
-
-  // Stop existing stream
-  if (video.srcObject) {
-    video.srcObject.getTracks().forEach(t => t.stop());
-  }
-
-  const constraints = {
-    video: deviceId
-      ? { deviceId: { exact: deviceId }, width: { ideal: 1280 }, height: { ideal: 720 } }
-      : { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
-  };
-
+  if (video.srcObject) video.srcObject.getTracks().forEach(t => t.stop());
+  const constraints = { video: deviceId ? { deviceId: { exact: deviceId }, width: { ideal: 1280 }, height: { ideal: 720 } } : { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } } };
   try {
     const stream = await navigator.mediaDevices.getUserMedia(constraints);
     video.srcObject = stream;
     setStatus('实时', false);
-
-    // Enumerate cameras after permission granted
     await loadCameraList();
-  } catch (e) {
-    setStatus('无摄像头', false);
-    console.error('Camera error:', e);
-  }
+  } catch (e) { setStatus('无摄像头', false); }
 }
 
 async function loadCameraList() {
   const devices = await navigator.mediaDevices.enumerateDevices();
   const cameras = devices.filter(d => d.kind === 'videoinput');
   const select = document.getElementById('cameraSelect');
-  const currentTrack = video.srcObject?.getVideoTracks()[0];
-  const currentId = currentTrack?.getSettings().deviceId;
-
-  select.innerHTML = cameras.map((cam, i) =>
-    `<option value="${cam.deviceId}" ${cam.deviceId === currentId ? 'selected' : ''}>${cam.label || '摄像头 ' + (i + 1)}</option>`
-  ).join('');
+  const currentId = video.srcObject?.getVideoTracks()[0]?.getSettings().deviceId;
+  select.innerHTML = cameras.map((c, i) => `<option value="${c.deviceId}" ${c.deviceId === currentId ? 'selected' : ''}>${c.label || '摄像头 ' + (i+1)}</option>`).join('');
 }
 
-document.getElementById('cameraSelect').addEventListener('change', e => {
-  if (e.target.value) initCamera(e.target.value);
-});
+document.getElementById('cameraSelect').addEventListener('change', e => { if (e.target.value) initCamera(e.target.value); });
+
+function switchSource(mode) {
+  sourceMode = mode;
+  document.getElementById('tabCamera').classList.toggle('active', mode === 'camera');
+  document.getElementById('tabUpload').classList.toggle('active', mode === 'upload');
+  document.getElementById('video').style.display = mode === 'camera' ? '' : 'none';
+  document.getElementById('camOverlay').style.display = mode === 'camera' ? '' : 'none';
+  document.getElementById('cameraStatus').style.display = mode === 'camera' ? '' : 'none';
+  document.getElementById('uploadZone').classList.toggle('active', mode === 'upload' && !uploadedBase64);
+  document.getElementById('previewImg').style.display = mode === 'upload' && uploadedBase64 ? 'block' : 'none';
+  document.getElementById('sourceBottom').style.display = mode === 'camera' ? '' : 'none';
+}
+
+// Upload handling
+const fileInput = document.getElementById('fileInput');
+const uploadZone = document.getElementById('uploadZone');
+const previewImg = document.getElementById('previewImg');
+
+fileInput.addEventListener('change', e => { if (e.target.files[0]) loadImage(e.target.files[0]); });
+uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('dragover'); });
+uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('dragover'));
+uploadZone.addEventListener('drop', e => { e.preventDefault(); uploadZone.classList.remove('dragover'); if (e.dataTransfer.files[0]) loadImage(e.dataTransfer.files[0]); });
+
+function loadImage(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    uploadedBase64 = e.target.result.split(',')[1];
+    previewImg.src = e.target.result;
+    previewImg.style.display = 'block';
+    uploadZone.classList.remove('active');
+  };
+  reader.readAsDataURL(file);
+}
 
 function setStatus(text, analyzing) {
   document.getElementById('statusText').textContent = text;
@@ -656,10 +301,16 @@ function setStatus(text, analyzing) {
 }
 
 function captureFrame() {
-  canvas.width = video.videoWidth;
-  canvas.height = video.videoHeight;
+  if (sourceMode === 'upload' && uploadedBase64) return uploadedBase64;
+  canvas.width = video.videoWidth; canvas.height = video.videoHeight;
   ctx.drawImage(video, 0, 0);
-  return canvas.toDataURL('image/jpeg', 0.7);
+  const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+  // Show captured frame thumbnail
+  const cf = document.getElementById('capturedFrame');
+  document.getElementById('capturedImg').src = dataUrl;
+  cf.classList.add('visible');
+  setTimeout(() => cf.classList.remove('visible'), 3000);
+  return dataUrl.split(',')[1];
 }
 
 async function analyze() {
@@ -667,219 +318,105 @@ async function analyze() {
   const baseUrl = document.getElementById('baseUrl').value.trim() || undefined;
   const model = document.getElementById('modelName').value.trim() || undefined;
   const provider = document.getElementById('providerSelect').value;
-  if (!apiKey) { alert('请输入 API 密钥'); return; }
-
+  if (!apiKey) { alert('请输入密钥'); return; }
   setStatus('分析中', true);
-
-  const frameData = captureFrame();
-  const base64 = frameData.split(',')[1];
+  const base64 = captureFrame();
+  if (!base64) { setStatus('无画面', false); return; }
 
   try {
     const result = await AgenticCore.agenticAsk(
       '分析这个场景。你看到了哪些人和设备？现在 AI 用什么方式交互最合适？',
-      {
-        provider,
-        apiKey,
-        baseUrl,
-        model,
-        tools: [],       // no tools, just vision analysis
-        stream: false,    // we want full JSON response
-        system: SYSTEM_PROMPT,
-        images: [{ data: base64, media_type: 'image/jpeg' }]
-      },
-      (type, data) => {
-        // emit callback — just log
-        if (type === 'status') console.log('[ambient]', data.message);
-      }
+      { provider, apiKey, baseUrl, model, tools: [], stream: false, system: SYSTEM_PROMPT, images: [{ data: base64, media_type: 'image/jpeg' }] },
+      () => {}
     );
-
     const content = typeof result === 'string' ? result : result.answer || result;
     let parsed;
-    try {
-      const cleaned = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-      parsed = JSON.parse(cleaned);
-    } catch {
-      parsed = null;
-    }
-
-    if (parsed) {
-      renderAnalysis(parsed);
-      history.unshift({ time: new Date(), data: parsed });
-      if (history.length > 20) history.pop();
-      renderHistory();
-    } else {
-      document.getElementById('rawOutput').textContent = content;
-      document.getElementById('rawSection').style.display = 'block';
-    }
-
+    try { parsed = JSON.parse(content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()); } catch { parsed = null; }
+    if (parsed) { renderAnalysis(parsed); history.unshift({ time: new Date(), data: parsed }); if (history.length > 20) history.pop(); renderHistory(); }
+    else { document.getElementById('rawOutput').textContent = content; document.getElementById('rawOutput').classList.add('visible'); }
     setStatus(isRunning ? '扫描中' : '实时', false);
   } catch (e) {
     setStatus('错误', false);
-    console.error(e);
     document.getElementById('rawOutput').textContent = '错误: ' + e.message;
-    document.getElementById('rawSection').style.display = 'block';
+    document.getElementById('rawOutput').classList.add('visible');
   }
 }
 
 function renderAnalysis(data) {
   document.getElementById('emptyState').style.display = 'none';
+  // Stats
+  const pCount = (data.people || []).length;
+  const dCount = (data.devices || []).length;
+  const rec = data.recommendation || {};
+  document.getElementById('peopleCount').textContent = pCount;
+  document.getElementById('deviceCount').textContent = dCount;
+  document.getElementById('channelIcon').textContent = getChannelIcon(rec.primary_channel);
+  document.getElementById('channelName').textContent = rec.primary_channel || '—';
+  document.getElementById('statsRow').style.display = '';
 
-  // Recommendations
-  const rec = data.recommendation;
-  const alt = data.alternative;
-  const recHTML = `
-    <div class="recommendation primary">
-      <div class="rec-header">
-        <div class="rec-icon">${getChannelIcon(rec.primary_channel)}</div>
-        <div class="rec-title">${capitalize(rec.primary_channel)} → ${rec.target_device || 'ambient'}</div>
-        <div class="rec-confidence">${rec.urgency}</div>
-      </div>
-      <div class="rec-body">
-        ${rec.reason}<br><br>
-        <em>"${rec.example}"</em>
-      </div>
-    </div>
-    ${alt ? `
-    <div class="recommendation">
-      <div class="rec-header">
-        <div class="rec-icon">${getChannelIcon(alt.channel)}</div>
-        <div class="rec-title">备选: ${capitalize(alt.channel)}</div>
-      </div>
-      <div class="rec-body">${alt.reason}</div>
-    </div>` : ''}
-  `;
-  document.getElementById('recommendations').innerHTML = recHTML;
-  document.getElementById('recSection').style.display = 'block';
+  // Recommendation
+  document.getElementById('recIcon').textContent = getChannelIcon(rec.primary_channel);
+  document.getElementById('recTitle').textContent = `${rec.primary_channel || '—'} → ${rec.target_device || '环境'}`;
+  document.getElementById('recDesc').textContent = rec.reason || '';  document.getElementById('recExample').textContent = rec.example ? `"${rec.example}"` : '';
+  document.getElementById('recBadge').textContent = rec.urgency || '';
+  document.getElementById('recVisual').style.display = '';
 
-  // Detected items
+  // Detected
   const items = [
-    ...(data.people || []).map(p => ({
-      icon: '👤', name: p.description,
-      type: `${p.activity} · ${p.attention}`
-    })),
-    ...(data.devices || []).map(d => ({
-      icon: getDeviceIcon(d.type), name: d.description,
-      type: `${d.type} · ${d.screen_state}`
-    }))
+    ...(data.people || []).map(p => ({ icon: '👤', name: p.description, type: `${p.activity} · ${p.attention}` })),
+    ...(data.devices || []).map(d => ({ icon: getDeviceIcon(d.type), name: d.description, type: `${d.type} · ${d.screen_state}` }))
   ];
-  document.getElementById('detectedList').innerHTML = items.map(i => `
-    <div class="detected-item">
-      <div class="di-icon">${i.icon}</div>
-      <div class="di-name">${i.name}</div>
-      <div class="di-type">${i.type}</div>
-    </div>
-  `).join('');
-  document.getElementById('detectedSection').style.display = 'block';
+  document.getElementById('detectedList').innerHTML = items.map(i => `<div class="det-item"><div class="di-icon">${i.icon}</div><div class="di-name">${i.name}</div><div class="di-type">${i.type}</div></div>`).join('');
 
-  // Context tags
+  // Context
   const scene = data.scene || {};
-  const tags = [
-    scene.setting, scene.lighting, scene.noise_level, scene.activity_type,
-    ...(data.context_tags || [])
-  ].filter(Boolean);
-  document.getElementById('contextTags').innerHTML = tags.map(t =>
-    `<div class="ctx-tag">${t}</div>`
-  ).join('');
-  document.getElementById('contextSection').style.display = 'block';
+  const tags = [scene.setting, scene.lighting, scene.noise_level, scene.activity_type, ...(data.context_tags || [])].filter(Boolean);
+  document.getElementById('contextTags').innerHTML = tags.map(t => `<div class="ctx-tag">${t}</div>`).join('');
+
+  // Alt
+  const alt = data.alternative;
+  document.getElementById('altText').textContent = alt ? `${getChannelIcon(alt.channel)} ${alt.channel}：${alt.reason}` : '';
+
+  document.getElementById('detailGrid').style.display = '';
 
   // Raw
   document.getElementById('rawOutput').textContent = JSON.stringify(data, null, 2);
-  document.getElementById('rawSection').style.display = 'block';
 }
 
 function renderHistory() {
-  if (history.length === 0) return;
-  document.getElementById('historySection').style.display = 'block';
-  document.getElementById('historyList').innerHTML = history.slice(0, 10).map(h => {
-    const r = h.data.recommendation;
-    return `
-      <div class="history-item">
-        <div class="history-time">${h.time.toLocaleTimeString()}</div>
-        <div class="history-text">
-          ${getChannelIcon(r.primary_channel)} ${capitalize(r.primary_channel)} → ${r.target_device || 'ambient'}
-          · ${r.reason}
-        </div>
-      </div>
-    `;
+  if (!history.length) return;
+  document.getElementById('historySection').style.display = '';
+  document.getElementById('historyList').innerHTML = history.slice(0, 8).map(h => {
+    const r = h.data.recommendation || {};
+    return `<div class="hist-item"><div class="hist-time">${h.time.toLocaleTimeString()}</div><div class="hist-text">${getChannelIcon(r.primary_channel)} ${r.primary_channel} → ${r.target_device || '环境'}</div></div>`;
   }).join('');
 }
 
 function toggleAnalysis() {
   const btn = document.getElementById('startBtn');
-  if (isRunning) {
-    clearInterval(analysisInterval);
-    isRunning = false;
-    btn.textContent = '开始';
-    setStatus('实时', false);
-  } else {
-    const interval = parseInt(document.getElementById('intervalSelect').value);
-    isRunning = true;
-    btn.textContent = '停止';
-    btn.classList.remove('primary');
-    btn.classList.add('danger');
-    setStatus('扫描中', false);
-    analyze(); // 立即开始
-    analysisInterval = setInterval(analyze, interval);
-  }
+  if (isRunning) { clearInterval(analysisInterval); isRunning = false; btn.textContent = '开始'; btn.className = 'btn primary'; setStatus('实时', false); }
+  else { isRunning = true; btn.textContent = '停止'; btn.className = 'btn danger'; setStatus('扫描中', false); analyze(); analysisInterval = setInterval(analyze, parseInt(document.getElementById('intervalSelect').value)); }
 }
+function analyzeOnce() { analyze(); }
+function toggleRaw() { const r = document.getElementById('rawOutput'); r.classList.toggle('visible'); }
 
-function analyzeOnce() {
-  analyze();
-}
+function getChannelIcon(ch) { return ({ '语音':'🔊','屏幕':'🖥','通知':'🔔','震动':'📳','环境光':'💡','不打扰':'🤫','文字':'💬','视觉':'👁','触觉':'📳','环境':'✨',voice:'🔊',screen:'🖥',notification:'🔔',vibration:'📳',ambient_light:'💡',none:'🤫' })[ch] || '📡'; }
+function getDeviceIcon(t) { return ({ laptop:'💻',phone:'📱',tablet:'📱',tv:'📺',speaker:'🔈',watch:'⌚',monitor:'🖥' })[t] || '📟'; }
 
-function getChannelIcon(channel) {
-  const map = {
-    voice: '🔊', screen: '🖥', notification: '🔔',
-    vibration: '📳', ambient_light: '💡', none: '🤫',
-    text: '💬', visual: '👁', haptic: '📳', ambient: '✨'
-  };
-  return map[channel] || '📡';
-}
-
-function getDeviceIcon(type) {
-  const map = {
-    laptop: '💻', phone: '📱', tablet: '📱', tv: '📺',
-    speaker: '🔈', watch: '⌚', monitor: '🖥', other: '📟'
-  };
-  return map[type] || '📟';
-}
-
-function capitalize(s) {
-  return s ? s.charAt(0).toUpperCase() + s.slice(1).replace(/_/g, ' ') : '';
-}
-
-// Persist config
+// Persist
 document.getElementById('apiKey').value = localStorage.getItem('ambient_api_key') || '';
 document.getElementById('baseUrl').value = localStorage.getItem('ambient_base_url') || 'https://api.openai.com/v1';
 document.getElementById('modelName').value = localStorage.getItem('ambient_model') || 'gpt-4o';
 document.getElementById('providerSelect').value = localStorage.getItem('ambient_provider') || 'openai';
-
-document.getElementById('apiKey').addEventListener('change', e => {
-  localStorage.setItem('ambient_api_key', e.target.value);
-});
-document.getElementById('baseUrl').addEventListener('change', e => {
-  localStorage.setItem('ambient_base_url', e.target.value);
-});
-document.getElementById('modelName').addEventListener('change', e => {
-  localStorage.setItem('ambient_model', e.target.value);
-});
+['apiKey','baseUrl','modelName'].forEach(id => document.getElementById(id).addEventListener('change', e => localStorage.setItem('ambient_'+id.replace(/[A-Z]/g,c=>'_'+c.toLowerCase()), e.target.value)));
 document.getElementById('providerSelect').addEventListener('change', e => {
   localStorage.setItem('ambient_provider', e.target.value);
-  // Auto-fill defaults when switching provider
-  const base = document.getElementById('baseUrl');
-  const model = document.getElementById('modelName');
-  if (e.target.value === 'anthropic') {
-    if (!base.value || base.value.includes('openai.com')) base.value = 'https://api.anthropic.com';
-    if (!model.value || model.value.startsWith('gpt')) model.value = 'claude-sonnet-4-20250514';
-  } else {
-    if (!base.value || base.value.includes('anthropic.com')) base.value = 'https://api.openai.com/v1';
-    if (!model.value || model.value.startsWith('claude')) model.value = 'gpt-4o';
-  }
-  localStorage.setItem('ambient_base_url', base.value);
-  localStorage.setItem('ambient_model', model.value);
+  const base = document.getElementById('baseUrl'), model = document.getElementById('modelName');
+  if (e.target.value === 'anthropic') { if (!base.value || base.value.includes('openai.com')) base.value = 'https://api.anthropic.com'; if (!model.value || model.value.startsWith('gpt')) model.value = 'claude-sonnet-4-20250514'; }
+  else { if (!base.value || base.value.includes('anthropic.com')) base.value = 'https://api.openai.com/v1'; if (!model.value || model.value.startsWith('claude')) model.value = 'gpt-4o'; }
+  localStorage.setItem('ambient_base_url', base.value); localStorage.setItem('ambient_model', model.value);
 });
 
-// Boot
 initCamera();
 </script>
 </body>
