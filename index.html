@@ -92,6 +92,8 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); heig
 
 .empty-state { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; }
 .empty-state .es-icon { font-size:26px; margin-bottom:8px; opacity:0.2; }
+.analyzing-spinner { animation: spin 1.5s linear infinite; opacity:0.5 !important; }
+@keyframes spin { from { transform:rotate(0deg); } to { transform:rotate(360deg); } }
 .empty-state .es-text { font-size:11px; color:var(--text3); line-height:1.6; text-align:center; }
 
 /* ── Config panel ── */
@@ -175,6 +177,7 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); heig
         <div class="detail-col"><div class="detail-title">检测到的对象</div><div id="detectedList"></div></div>
         <div class="detail-col"><div class="detail-title">场景上下文</div><div class="ctx-tags" id="contextTags"></div><div style="margin-top:8px"><div class="detail-title">备选方案</div><div id="altText" style="font-size:10px;color:var(--text2);line-height:1.4"></div></div></div>
       </div>
+      <div class="empty-state" id="analyzingState" style="display:none"><div class="es-icon analyzing-spinner">◎</div><div class="es-text">正在分析画面...</div></div>
       <div class="empty-state" id="emptyState"><div class="es-icon">👁</div><div class="es-text">填入密钥，点击「开始」<br>或上传图片进行分析</div></div>
     </div>
   </div>
@@ -320,6 +323,8 @@ async function analyze() {
   const provider = document.getElementById('providerSelect').value;
   if (!apiKey) { alert('请输入密钥'); return; }
   setStatus('分析中', true);
+  document.getElementById('analyzingState').style.display = '';
+  document.getElementById('emptyState').style.display = 'none';
   const base64 = captureFrame();
   if (!base64) { setStatus('无画面', false); return; }
 
@@ -333,10 +338,11 @@ async function analyze() {
     let parsed;
     try { parsed = JSON.parse(content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()); } catch { parsed = null; }
     if (parsed) { renderAnalysis(parsed); history.unshift({ time: new Date(), data: parsed }); if (history.length > 20) history.pop(); renderHistory(); }
-    else { document.getElementById('rawOutput').textContent = content; document.getElementById('rawOutput').classList.add('visible'); }
+    else { document.getElementById('rawOutput').textContent = content; document.getElementById('rawOutput').classList.add('visible'); document.getElementById('analyzingState').style.display = 'none'; }
     setStatus(isRunning ? '扫描中' : '实时', false);
   } catch (e) {
     setStatus('错误', false);
+    document.getElementById('analyzingState').style.display = 'none';
     document.getElementById('rawOutput').textContent = '错误: ' + e.message;
     document.getElementById('rawOutput').classList.add('visible');
   }
@@ -344,6 +350,7 @@ async function analyze() {
 
 function renderAnalysis(data) {
   document.getElementById('emptyState').style.display = 'none';
+  document.getElementById('analyzingState').style.display = 'none';
   // Stats
   const pCount = (data.people || []).length;
   const dCount = (data.devices || []).length;
