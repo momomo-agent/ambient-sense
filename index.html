@@ -109,8 +109,8 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); heig
 @keyframes spin { from { transform:rotate(0deg); } to { transform:rotate(360deg); } }
 .empty-state .es-text { font-size:11px; color:var(--text3); line-height:1.6; text-align:center; }
 
-.analyzing-float { display:none; padding:3px 10px; background:rgba(0,0,0,0.5); backdrop-filter:blur(8px); border:1px solid var(--border); border-radius:10px; font-size:10px; font-family:var(--mono); color:var(--text2); align-items:center; gap:5px; }
-.analyzing-float.visible { display:flex; }
+.analyzing-float { display:none; padding:2px 8px; background:rgba(251,146,60,0.1); border:1px solid rgba(251,146,60,0.2); border-radius:8px; font-size:9px; font-family:var(--mono); color:var(--warm); align-items:center; gap:4px; margin-left:8px; vertical-align:middle; }
+.analyzing-float.visible { display:inline-flex; }
 .analyzing-float .af-dot { width:6px; height:6px; border-radius:50%; background:var(--warm); animation:blink 0.5s ease-in-out infinite; }
 
 /* ── Config panel (overlay drawer) ── */
@@ -180,7 +180,7 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); heig
 
   <!-- Results -->
   <div class="results-panel">
-    <div class="panel-bar" style="position:relative"><h2>分析结果</h2><div class="analyzing-float" id="analyzingState"><div class="af-dot"></div>分析中</div><button class="settings-btn" onclick="toggleSettings()">⚙</button></div>
+    <div class="panel-bar" style="position:relative"><h2>分析结果 <span class="analyzing-float" id="analyzingState"><span class="af-dot"></span>分析中</span></h2><button class="settings-btn" onclick="toggleSettings()">⚙</button></div>
     <div class="results-body" id="resultsBody">
       <!-- Scene Topology -->
       <div class="scene-topo" id="sceneTopo" style="display:none">
