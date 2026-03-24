@@ -537,7 +537,20 @@ function toggleAnalysis() {
   if (isRunning) { clearInterval(analysisInterval); isRunning = false; btn.textContent = '开始'; btn.className = 'btn primary'; setStatus('实时', false); }
   else { isRunning = true; btn.textContent = '停止'; btn.className = 'btn danger'; setStatus('扫描中', false); analyze(); analysisInterval = setInterval(analyze, parseInt(document.getElementById('intervalSelect').value)); }
 }
-function analyzeOnce() { analyze(); }
+function analyzeOnce() {
+  // In camera mode, capture frame and switch to upload view to show it
+  if (sourceMode === 'camera') {
+    canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+    ctx.drawImage(video, 0, 0);
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+    uploadedBase64 = dataUrl.split(',')[1];
+    previewImg.src = dataUrl;
+    switchSource('upload');
+    previewImg.style.display = 'block';
+    uploadZone.classList.remove('active');
+  }
+  analyze();
+}
 function toggleRaw() { const r = document.getElementById('rawOutput'); r.classList.toggle('visible'); }
 function toggleSettings() { document.getElementById('configPanel').classList.toggle('open'); document.getElementById('configOverlay').classList.toggle('open'); }
 
