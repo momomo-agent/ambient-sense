@@ -445,72 +445,79 @@ function renderAnalysis(data) {
 
 function renderTopology(people, devices, rec) {
   const svg = document.getElementById('topoSvg');
-  const W = 500, H = 160;
+  const devCount = devices.length;
+  const pplCount = people.length;
+  const totalNodes = devCount + pplCount;
+
+  // Dynamic viewBox based on node count
+  const W = 600, H = Math.max(200, Math.min(400, totalNodes * 45));
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+
   const aiX = 50, aiY = H / 2;
+  const devX = W * 0.35, pplX = W * 0.82;
+  const aiR = 20, devR = 14, pplR = 14;
 
-  // Layout: AI on left, devices in middle, people on right
-  const devCount = Math.max(devices.length, 1);
-  const pplCount = Math.max(people.length, 1);
-  const devX = 200, pplX = 400;
+  let s = '';
 
-  let svgContent = '';
+  // AI node
+  s += `<circle cx="${aiX}" cy="${aiY}" r="${aiR+6}" class="topo-ai-glow"/>`;
+  s += `<text x="${aiX}" y="${aiY+4}" text-anchor="middle" style="font-size:16px;fill:var(--text)">🤖</text>`;
+  s += `<text x="${aiX}" y="${aiY+aiR+14}" text-anchor="middle" style="font-size:7px;fill:var(--accent);font-family:var(--mono)">AI</text>`;
 
-  // AI node (center-left)
-  svgContent += `<circle cx="${aiX}" cy="${aiY}" r="28" class="topo-ai-glow"/>`;
-  svgContent += `<text x="${aiX}" y="${aiY-2}" text-anchor="middle" class="node-icon" style="font-size:22px;fill:var(--text)">🤖</text>`;
-  svgContent += `<text x="${aiX}" y="${aiY+18}" text-anchor="middle" style="font-size:8px;fill:var(--accent);font-family:var(--mono)">AI</text>`;
+  // Layout helper
+  const yPos = (i, count, margin) => {
+    if (count === 1) return H / 2;
+    const usable = H - margin * 2;
+    return margin + usable * i / (count - 1);
+  };
 
-  // Device nodes
+  // Devices
   devices.forEach((d, i) => {
-    const y = devCount === 1 ? H/2 : 30 + (H-60) * i / (devCount-1);
-    const isTarget = rec.target_device === d.id || rec.target_device === d.description;
+    const y = yPos(i, devCount, 30);
+    const isTarget = rec.target_device === d.id || rec.target_device === d.description || (devCount === 1);
     const cls = isTarget ? 'topo-device-ring active' : 'topo-device-ring';
-
-    svgContent += `<circle cx="${devX}" cy="${y}" r="22" class="${cls}"/>`;
-    svgContent += `<text x="${devX}" y="${y+4}" text-anchor="middle" style="font-size:18px">${getDeviceIcon(d.type)}</text>`;
-    svgContent += `<text x="${devX}" y="${y+36}" text-anchor="middle" class="node-label" style="font-size:7px;fill:var(--text3)">${d.description.slice(0,8)}</text>`;
-
-    // Line from AI to device
     const pathCls = isTarget ? 'topo-path' : 'topo-path alt';
-    const ctrl1x = aiX + 50, ctrl2x = devX - 50;
-    svgContent += `<path d="M${aiX+28},${aiY} C${ctrl1x},${aiY} ${ctrl2x},${y} ${devX-22},${y}" class="${pathCls}"/>`;
 
-    // Lines from device to people
+    // AI → device
+    s += `<path d="M${aiX+aiR},${aiY} C${aiX+60},${aiY} ${devX-50},${y} ${devX-devR},${y}" class="${pathCls}"/>`;
+    s += `<circle cx="${devX}" cy="${y}" r="${devR}" class="${cls}"/>`;
+    s += `<text x="${devX}" y="${y+4}" text-anchor="middle" style="font-size:12px">${getDeviceIcon(d.type)}</text>`;
+    s += `<text x="${devX}" y="${y+devR+10}" text-anchor="middle" style="font-size:6px;fill:var(--text3);font-family:var(--sans)">${d.description.slice(0,10)}</text>`;
+
+    // Device → people
     people.forEach((p, j) => {
-      const py = pplCount === 1 ? H/2 : 30 + (H-60) * j / (pplCount-1);
+      const py = yPos(j, pplCount, 30);
       const isPrimary = isTarget && (rec.target_person === p.id || rec.target_person === '所有人');
-      const lpCls = isPrimary ? 'topo-path' : 'topo-path alt';
-      const c1x = devX + 50, c2x = pplX - 50;
-      svgContent += `<path d="M${devX+22},${y} C${c1x},${y} ${c2x},${py} ${pplX-20},${py}" class="${lpCls}"/>`;
+      s += `<path d="M${devX+devR},${y} C${devX+50},${y} ${pplX-50},${py} ${pplX-pplR},${py}" class="${isPrimary ? 'topo-path' : 'topo-path alt'}"/>`;
     });
   });
 
-  // If no devices, direct AI→people lines
-  if (devices.length === 0) {
+  // No devices → direct AI→people
+  if (devCount === 0) {
     people.forEach((p, j) => {
-      const py = pplCount === 1 ? H/2 : 30 + (H-60) * j / (pplCount-1);
-      svgContent += `<path d="M${aiX+28},${aiY} C${150},${aiY} ${300},${py} ${pplX-20},${py}" class="topo-path"/>`;
+      const py = yPos(j, pplCount, 30);
+      s += `<path d="M${aiX+aiR},${aiY} C${W*0.3},${aiY} ${W*0.6},${py} ${pplX-pplR},${py}" class="topo-path"/>`;
     });
   }
 
-  // People nodes
+  // People
   people.forEach((p, i) => {
-    const y = pplCount === 1 ? H/2 : 30 + (H-60) * i / (pplCount-1);
-    svgContent += `<circle cx="${pplX}" cy="${y}" r="20" class="topo-person-ring"/>`;
-    svgContent += `<text x="${pplX}" y="${y+4}" text-anchor="middle" style="font-size:16px">👤</text>`;
-    svgContent += `<text x="${pplX}" y="${y+34}" text-anchor="middle" class="node-label" style="font-size:7px;fill:var(--text3)">${p.description.slice(0,8)}</text>`;
-    // Attention badge
+    const y = yPos(i, pplCount, 30);
+    s += `<circle cx="${pplX}" cy="${y}" r="${pplR}" class="topo-person-ring"/>`;
+    s += `<text x="${pplX}" y="${y+4}" text-anchor="middle" style="font-size:11px">👤</text>`;
+    s += `<text x="${pplX}" y="${y+pplR+10}" text-anchor="middle" style="font-size:6px;fill:var(--text3);font-family:var(--sans)">${p.description.slice(0,10)}</text>`;
     const attnColor = p.attention === '专注' ? 'var(--warm)' : p.attention === '空闲' ? 'var(--accent)' : 'var(--text3)';
-    svgContent += `<text x="${pplX}" y="${y-22}" text-anchor="middle" style="font-size:6px;fill:${attnColor};font-family:var(--mono)">${p.attention}</text>`;
+    s += `<text x="${pplX}" y="${y-pplR-4}" text-anchor="middle" style="font-size:5px;fill:${attnColor};font-family:var(--mono)">${p.attention}</text>`;
   });
 
-  // Channel label on the primary path
+  // Channel label
   if (rec.primary_channel) {
-    svgContent += `<rect x="${115}" y="${aiY-18}" width="${70}" height="16" rx="4" fill="rgba(74,222,128,0.1)" stroke="rgba(74,222,128,0.15)" stroke-width="0.5"/>`;
-    svgContent += `<text x="${150}" y="${aiY-8}" text-anchor="middle" style="font-size:7px;fill:var(--accent);font-family:var(--mono)">${getChannelIcon(rec.primary_channel)} ${rec.primary_channel}</text>`;
+    const lx = aiX + 40, ly = aiY - 14;
+    s += `<rect x="${lx}" y="${ly}" width="60" height="13" rx="3" fill="rgba(74,222,128,0.1)" stroke="rgba(74,222,128,0.15)" stroke-width="0.5"/>`;
+    s += `<text x="${lx+30}" y="${ly+9}" text-anchor="middle" style="font-size:6px;fill:var(--accent);font-family:var(--mono)">${getChannelIcon(rec.primary_channel)} ${rec.primary_channel}</text>`;
   }
 
-  svg.innerHTML = svgContent;
+  svg.innerHTML = s;
 }
 
 function renderHistory() {
