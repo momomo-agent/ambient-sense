@@ -32,7 +32,7 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); heig
 .upload-zone .uz-icon { font-size: 36px; opacity: 0.25; }
 .upload-zone .uz-text { font-size: 11px; }
 .upload-zone.dragover { background: rgba(74,222,128,0.05); }
-.preview-img { display: none; max-width: 100%; max-height: 100%; object-fit: contain; }
+.preview-img { display: none; max-width: 100%; max-height: 100%; object-fit: contain; cursor: pointer; }
 
 .cam-overlay { position: absolute; inset: 0; pointer-events: none; }
 .scan-line { position: absolute; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, transparent, var(--accent), transparent); opacity: 0; animation: scan 4s ease-in-out infinite; }
@@ -283,9 +283,15 @@ const uploadZone = document.getElementById('uploadZone');
 const previewImg = document.getElementById('previewImg');
 
 fileInput.addEventListener('change', e => { if (e.target.files[0]) loadImage(e.target.files[0]); });
-uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('dragover'); });
-uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('dragover'));
-uploadZone.addEventListener('drop', e => { e.preventDefault(); uploadZone.classList.remove('dragover'); if (e.dataTransfer.files[0]) loadImage(e.dataTransfer.files[0]); });
+
+// Drag on entire source-view (works even after first upload)
+const sourceView = document.getElementById('sourceView');
+sourceView.addEventListener('dragover', e => { e.preventDefault(); if (sourceMode === 'upload') uploadZone.classList.add('dragover'); });
+sourceView.addEventListener('dragleave', e => { if (!sourceView.contains(e.relatedTarget)) uploadZone.classList.remove('dragover'); });
+sourceView.addEventListener('drop', e => { e.preventDefault(); uploadZone.classList.remove('dragover'); if (e.dataTransfer.files[0]) { if (sourceMode !== 'upload') switchSource('upload'); loadImage(e.dataTransfer.files[0]); } });
+
+// Click preview to re-upload
+previewImg.addEventListener('click', () => fileInput.click());
 
 function loadImage(file) {
   const reader = new FileReader();
